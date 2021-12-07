@@ -1,0 +1,21 @@
+{
+  "name": "l02",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NFTsMarket/Buy-Service.git"
+  },
+  "homepage": "https://github.com/NFTsMarket/Buy-Service",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "author": "Sergio Sánchez & Fernando Sola",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1",
+    "mongoose": "^6.0.13"
+  }
+}
