@@ -15,32 +15,75 @@ app.get("/", (req, res) => {
 });
 
 
-// GET all purchases API method
+// GET purchases API method
 app.get(BASE_API_PATH + "/purchase", (req, res) => {
     console.log(Date() + " - GET /purchase/");
 
     // We define ordering and limiting parameters obtained from the URI
-    let limitatt = (req.query["limit"] != null && !isNaN(req.query["limit"])) ? req.query["limit"] : 0;
-    let offset = (req.query["offset"] != null && !isNaN(req.query["offset"])) ? req.query["offset"] : 0;
-    let sortatt = (req.query["sort"] != null) ? req.query["sort"] : null;
-    let order = (req.query["order"] != null) ? req.query["order"] : 1;
+    let limitatt = ("limit" in req.query && !isNaN(req.query["limit"])) ? req.query["limit"] : 0;
+    let offset = ("offset" in req.query && !isNaN(req.query["offset"])) ? req.query["offset"] : 0;
+    let sortatt = ("sort" in req.query) ? req.query["sort"] : null;
+    let order = ("order" in req.query) ? req.query["order"] : 1;
 
     // Process the filters from the URI, that is, the properties from schema to filter
-    let filters = req.query;
-    Object.keys(filters).forEach(x => {
-        if (x == "sort" || x == "order" || x == "limit" || x == "offset") {
-            delete filters[x];
-        }
-    });
+    let filters = { "createdAt": {}, "amount": {} };
+    if ("before" in req.query) {
+        let date = new Date(req.query["before"]);
+        if (!isNaN(date))
+            filters["createdAt"]["$lte"] = date;
+        else
+            return res.status(400).json("Invalid 'before' argument. It must be in UTC format.")
+    }
+
+    if ("after" in req.query) {
+        let date = new Date(req.query["after"]);
+        if (!isNaN(date))
+            filters["createdAt"]["$gte"] = date;
+        else
+            return res.status(400).json("Invalid 'after' argument. It must be in UTC format.")
+    }
+
+    // TODO: En estos dos, cuando haya autenticación, tal vez habría que devolver error 403
+    if ("buyer" in req.query) {
+        let buyer = req.query["buyer"];
+        if (OjectId.isValid(buyer))
+            filters["buyer"] = buyer;
+        else
+            return res.status(400).json("Invalid buyer.")
+    }
+
+    if ("seller" in req.query) {
+        let seller = req.query["seller"];
+        if (OjectId.isValid(seller))
+            filters["seller"] = seller;
+        else
+            return res.status(400).json("Invalid seller.")
+    }
+
+    if ("amountGte" in req.query) {
+        let amountGte = req.query["amountGte"];
+        if (!isNaN(amountGte))
+            filters["amount"]["$gte"] = amountGte;
+        else
+            return res.status(400).json("Invalid 'amountGte' argument. It must be a number.")
+    }
+
+    if ("amountLte" in req.query) {
+        let amountLte = req.query["amountLte"];
+        if (!isNaN(amountLte))
+            filters["amount"]["$lte"] = amountLte;
+        else
+            return res.status(400).json("Invalid 'amountLte' argument. It must be a number.")
+    }
 
     Purchase.find(filters, null, { sort: { [sortatt]: order }, limit: parseInt(limitatt), skip: parseInt(offset) }, (err, purchases) => {
-        if (purchases.length < 1) {
-            console.log(Date() + "- There are no purchases to show");
-            return res.status(404).json("There are no purchases to show");
-        }
-        else if (err) {
+        if (err) {
             console.log(Date() + "-" + err);
             return res.status(500).json("Internal server error");
+        }
+        else if (purchases && purchases.length < 1) {
+            console.log(Date() + "- There are no purchases to show");
+            return res.status(404).json("There are no purchases to show");
         }
         else {
             let reponse = {
@@ -75,7 +118,7 @@ app.post(BASE_API_PATH + "/purchase/", (req, res) => {
         if (err)
             return res.status(400).json('Bad request');
         else if (purchase) {
-            console.log(Date() + "- Purchase created");
+            console.log(Date() + " - Purchase created");
             return res.status(201).json(purchase._doc);
         } else
             return res.status(500).json("Internal server error");
