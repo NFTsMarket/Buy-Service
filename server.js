@@ -1,6 +1,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 const Purchase = require('./purchases');
+var ObjectId = require('mongoose').Types.ObjectId;
 
 var BASE_API_PATH = "/api/v1";
 
@@ -78,17 +79,43 @@ app.get(BASE_API_PATH + "/purchase", (req, res) => {
 
 // PUT a specific purchase to change its state API method
 // ----------- TO-DO -------------
+app.put(BASE_API_PATH + "/purchase/:id", async (req, res) => {
+    console.log(Date() + " - PUT /purchase/" + req.params.id);
+
+    // Check whether the purchase id has a correct format
+    if (!ObjectId.isValid(req.params.id)){
+        console.log(Date() + "- Invalid purchase id");
+        return res.status(400).json("Invalid purchase id");
+    }
+
+    // Validate purchase features values according to the schema restrictions defined
+    let validationErrors = new Purchase(req.body).validateSync();
+    if (validationErrors) {
+        console.log(Date() + "- Invalid purchase data");
+        return res.status(400).json(validationErrors.message);
+    }
+
+    // When retreaving and updating a purchase, we need to add {new: true} if we want to get the
+    // updated version of the purchase as response so we can send it to the client
+    // https://stackoverflow.com/questions/32811510/mongoose-findoneandupdate-doesnt-return-updated-document
+    Purchase.findOneAndUpdate({ _id: req.params.id }, req.body, {new:true}, function(err, purchase) {
+        console.log(purchase);
+        if(err){
+            console.log(Date() + "-" + err);
+            return res.status(500).json("Internal server error");
+        }else if (purchase){
+            console.log(Date() + "- Purchase updated");
+            return res.status(200).json(purchase._doc);
+        }else{
+            console.log(Date() + "- Purchase not found");
+            return res.status(404).json("Purchase not found");
+        }
+    });
+});
 
 
 // DELETE a specific purchase API method
 // ----------- TO-DO -------------
 
-
-// GET pending purchases of an user API method
-// ----------- TO-DO -------------
-
-
-// GET the history of an user purchases API method
-// ----------- TO-DO -------------
 
 module.exports = app;

@@ -25,7 +25,7 @@ const purchaseSchema = new mongoose.Schema({
         // value is between one of the defined: https://stackoverflow.com/questions/29299477/how-to-create-and-use-enum-in-mongoose
         enum: {
             values: ['Pending', 'Accepted'],
-            message: '{VALUE} is not supported'
+            message: '{VALUE} is not a value in (Pending, Accepted)'
         },
         required: [true, "The purchase must have a state"]
     },
