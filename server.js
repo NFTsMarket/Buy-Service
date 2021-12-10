@@ -20,8 +20,8 @@ app.get(BASE_API_PATH + "/purchase", (req, res) => {
     console.log(Date() + " - GET /purchases");
 
     // We define ordering and limiting parameters obtained from the URI
-    let limitatt = (req.query["limit"] != null && Number.isInteger(req.query["limit"]) ) ? req.query["limit"] : 0;
-    let offset = (req.query["offset"] != null && Number.isInteger(req.query["offset"]) ) ? req.query["offset"] : 0;
+    let limitatt = (req.query["limit"] != null && ! isNaN(req.query["limit"])) ? req.query["limit"] : 0;
+    let offset = (req.query["offset"] != null && ! isNaN(req.query["offset"])) ? req.query["offset"] : 0;
     let sortatt = (req.query["sort"] != null) ? req.query["sort"] : null;
     let order = (req.query["order"] != null) ? req.query["order"] : 1;
 
