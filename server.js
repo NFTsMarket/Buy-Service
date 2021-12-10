@@ -17,11 +17,11 @@ app.get("/", (req, res) => {
 
 // GET all purchases API method
 app.get(BASE_API_PATH + "/purchase", (req, res) => {
-    console.log(Date() + " - GET /purchases");
+    console.log(Date() + " - GET /purchase/");
 
     // We define ordering and limiting parameters obtained from the URI
-    let limitatt = (req.query["limit"] != null && ! isNaN(req.query["limit"])) ? req.query["limit"] : 0;
-    let offset = (req.query["offset"] != null && ! isNaN(req.query["offset"])) ? req.query["offset"] : 0;
+    let limitatt = (req.query["limit"] != null && !isNaN(req.query["limit"])) ? req.query["limit"] : 0;
+    let offset = (req.query["offset"] != null && !isNaN(req.query["offset"])) ? req.query["offset"] : 0;
     let sortatt = (req.query["sort"] != null) ? req.query["sort"] : null;
     let order = (req.query["order"] != null) ? req.query["order"] : 1;
 
@@ -59,22 +59,28 @@ app.get(BASE_API_PATH + "/purchase", (req, res) => {
 
 
 // POST a new purchase API method
-// ----------- TO-DO -------------
-// Use validation predefined in the schema with mongoose: https://mongoosejs.com/docs/validation.html
-// You can use, for example, 'let error = badPurchase.validateSync();' wich executes the validation
-// defined in the model in 'purchases.js'
-// app.post(BASE_API_PATH + "/contacts", (req, res) => {
-//     console.log(Date() + " - POST /contacts");
-//     var contact = req.body;
-//     Contact.create(contact, (err) => {
-//         if (err) {
-//             console.log(Date() + " - " + err);
-//             res.sendStatus(500);
-//         } else {
-//             res.sendStatus(201);
-//         }
-//     });
-// });
+app.post(BASE_API_PATH + "/purchase/", (req, res) => {
+    console.log(Date() + " - POST /purchase/");
+
+    // https://www.geeksforgeeks.org/node-js-crud-operations-using-mongoose-and-mongodb-atlas/
+    // https://mongoosejs.com/docs/models.html
+    let amount = 0; // TODO: obtener precio del asset
+    Purchase.create({
+        buyerId: req.body.buyerId,
+        sellerId: req.body.sellerId,
+        assetId: req.body.assetId,
+        amount: amount,
+        state: 'Pending',
+    }, function (err, purchase) {
+        if (err)
+            return res.status(400).json('Bad request');
+        else if (purchase) {
+            console.log(Date() + "- Purchase created");
+            return res.status(201).json(purchase._doc);
+        } else
+            return res.status(500).json("Internal server error");
+    });
+});
 
 
 // PUT a specific purchase to change its state API method
@@ -83,7 +89,7 @@ app.put(BASE_API_PATH + "/purchase/:id", async (req, res) => {
     console.log(Date() + " - PUT /purchase/" + req.params.id);
 
     // Check whether the purchase id has a correct format
-    if (!ObjectId.isValid(req.params.id)){
+    if (!ObjectId.isValid(req.params.id)) {
         console.log(Date() + "- Invalid purchase id");
         return res.status(400).json("Invalid purchase id");
     }
@@ -98,19 +104,21 @@ app.put(BASE_API_PATH + "/purchase/:id", async (req, res) => {
     // When retreaving and updating a purchase, we need to add {new: true} if we want to get the
     // updated version of the purchase as response so we can send it to the client
     // https://stackoverflow.com/questions/32811510/mongoose-findoneandupdate-doesnt-return-updated-document
-    Purchase.findOneAndUpdate({ _id: req.params.id }, req.body, {new:true}, function(err, purchase) {
+    Purchase.findOneAndUpdate({ _id: req.params.id }, req.body, { new: true }, function (err, purchase) {
         console.log(purchase);
-        if(err){
+        if (err) {
             console.log(Date() + "-" + err);
             return res.status(500).json("Internal server error");
-        }else if (purchase){
+        } else if (purchase) {
             console.log(Date() + "- Purchase updated");
             return res.status(200).json(purchase._doc);
-        }else{
+        } else {
             console.log(Date() + "- Purchase not found");
             return res.status(404).json("Purchase not found");
         }
     });
+
+    // TODO: communication with other APIs
 });
 
 

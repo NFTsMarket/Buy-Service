@@ -5,7 +5,7 @@ const purchaseSchema = new mongoose.Schema({
     buyerId: {
         type: String,
         required: [true, "The purchase must have a buyer who created it"]
-    },
+    }, // no es type: mongoose.Schema.Types.ObjectId ??
     sellerId: {
         type: String,
         required: [true, "The purchase must have a seller who owns the asset"]
