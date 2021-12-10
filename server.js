@@ -26,20 +26,25 @@ app.get(BASE_API_PATH + "/purchase", (req, res) => {
     let order = ("order" in req.query) ? req.query["order"] : 1;
 
     // Process the filters from the URI, that is, the properties from schema to filter
-    let filters = { "createdAt": {}, "amount": {} };
+    let filters = {};
     if ("before" in req.query) {
         let date = new Date(req.query["before"]);
         if (!isNaN(date))
-            filters["createdAt"]["$lte"] = date;
+            filters["createdAt"] = { "$lte": date };
         else
             return res.status(400).json("Invalid 'before' argument. It must be in UTC format.")
     }
 
     if ("after" in req.query) {
         let date = new Date(req.query["after"]);
-        if (!isNaN(date))
+        if (!isNaN(date)) {
+            let createdAt;
+            if ("createdAt" in filters)
+                createdAt = filters["createdAt"];
+            else
+                filters["createdAt"] = (createdAt = {});
             filters["createdAt"]["$gte"] = date;
-        else
+        } else
             return res.status(400).json("Invalid 'after' argument. It must be in UTC format.")
     }
 
@@ -63,18 +68,26 @@ app.get(BASE_API_PATH + "/purchase", (req, res) => {
     if ("amountGte" in req.query) {
         let amountGte = req.query["amountGte"];
         if (!isNaN(amountGte))
-            filters["amount"]["$gte"] = amountGte;
+            filters["amount"] = { "$gte": amountGte };
         else
             return res.status(400).json("Invalid 'amountGte' argument. It must be a number.")
     }
 
     if ("amountLte" in req.query) {
         let amountLte = req.query["amountLte"];
-        if (!isNaN(amountLte))
-            filters["amount"]["$lte"] = amountLte;
-        else
+        if (!isNaN(amountLte)) {
+            let amount;
+            if ("amount" in filters)
+                amount = filters["amount"];
+            else
+                filters["amount"] = (amount = {});
+            amount["$lte"] = amountLte;
+        } else
             return res.status(400).json("Invalid 'amountLte' argument. It must be a number.")
     }
+
+    if ("state" in req.query)
+        filters["state"] = req.query["state"];
 
     Purchase.find(filters, null, { sort: { [sortatt]: order }, limit: parseInt(limitatt), skip: parseInt(offset) }, (err, purchases) => {
         if (err) {
@@ -98,7 +111,22 @@ app.get(BASE_API_PATH + "/purchase", (req, res) => {
 });
 
 // GET a specific purchase API method
-// ----------- TO-DO -------------
+app.get(BASE_API_PATH + "/purchase/:id", (req, res) => {
+    console.log(Date() + " - GET /purchase/" + req.params.id);
+
+    // Check whether the purchase id has a correct format
+    if (ObjectId.isValid(req.params.id))
+        Purchase.findOne({ _id: req.params.id }, (err, purchase) => {
+            if (err)
+                return res.status(500).json("Internal server error");
+            else if (purchase)
+                return res.status(200).json(purchase.cleanedPurchase());
+            else
+                return res.status(404).json("Purchase not found");
+        });
+    else
+        return res.status(400).json("Invalid purchase id");
+});
 
 
 // POST a new purchase API method
