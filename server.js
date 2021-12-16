@@ -194,7 +194,22 @@ app.put(BASE_API_PATH + "/purchase/:id", async (req, res) => {
 
 
 // DELETE a specific purchase API method
-// ----------- TO-DO -------------
+app.delete(BASE_API_PATH + "/purchase/:id", (req, res) => {
+    console.log(Date() + " - DELETE /purchase/" + req.params.id);
+
+    // Check whether the purchase id has a correct format
+    if (ObjectId.isValid(req.params.id))
+        Purchase.deleteOne({ _id: req.params.id }, (err, result) => {
+            if (err)
+                return res.status(500).json("Internal server error");
+            else if (result.deletedCount > 0)
+                return res.status(200).json("Deleted successfully");
+            else
+                return res.status(404).json("Purchase not found");
+        });
+    else
+        return res.status(400).json("Invalid purchase id");
+});
 
 
 module.exports = app;
