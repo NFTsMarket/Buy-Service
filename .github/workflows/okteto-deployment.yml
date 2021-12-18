@@ -28,5 +28,5 @@ jobs:
       - name: Okteto Pipeline
         uses: okteto/pipeline@latest
         with:
-          name: fis-buyservice
+          name: buy-service
           namespace: fis-fersolesp
