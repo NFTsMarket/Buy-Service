@@ -21,16 +21,24 @@ spec:
       containers:
         - name: api
           image: {{ .Values.api.image }}:{{ .Values.tag }}
+          env:
+            - name: MONGO_URL
+              valueFrom:
+                secretKeyRef:
+                    name: mongodb
+                    key: buy_mongo_url
           ports:
             - name: http
               containerPort: 3000
               protocol: TCP
           readinessProbe:
+            initialDelaySeconds: 10
             periodSeconds: 1
             httpGet:
               path: /api/v1/healthz
               port: 3000
           livenessProbe:
+            initialDelaySeconds: 10
             periodSeconds: 1
             httpGet:
               path: /api/v1/healthz
