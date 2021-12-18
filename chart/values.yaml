@@ -2,25 +2,6 @@ tag: dev
 
 api:
   replicaCount: 1
-  image: okteto.dev/api 
+  image: okteto.dev/api
 
-services:
-  fastapi:
-    build: .
-    ports:
-      - 8080:8080
-    environment:
-      - DB_HOST=mongodb://mongodb:27017
-      - secret=dev
-  mongodb:
-    image: bitnami/mongodb:latest
-    ports:
-      - 27017
-    volumes:
-      - data:/mongodb
-volumes:
-  data:
-
-environment:
-  - DB_HOST=mongodb://mongodb:27017
-  - secret=dev 
+buyMongoUrl: mongodb://mongo/test

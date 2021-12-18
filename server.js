@@ -8,6 +8,9 @@ var BASE_API_PATH = "/api/v1";
 var app = express();
 app.use(bodyParser.json());
 
+app.get("/api/v1/healthz", (req, res) => {
+    res.sendStatus(200);
+});
 
 // TO-DO: This get to the root should return the documentation of the API
 app.get("/", (req, res) => {
