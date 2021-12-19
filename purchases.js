@@ -40,6 +40,7 @@ const purchaseSchema = new mongoose.Schema({
 // id or updatedAt which are not relevant for the user
 purchaseSchema.methods.cleanedPurchase = function () {
     return {
+        id: this._id,
         buyerId: this.buyerId,
         sellerId: this.sellerId,
         assetId: this.assetId,
