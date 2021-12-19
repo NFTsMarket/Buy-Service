@@ -1,6 +1,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 const Purchase = require('./purchases');
+const request = require('request');
 var ObjectId = require('mongoose').Types.ObjectId;
 
 var BASE_API_PATH = "/api/v1";
@@ -136,24 +137,43 @@ app.get(BASE_API_PATH + "/purchase/:id", (req, res) => {
 app.post(BASE_API_PATH + "/purchase/", (req, res) => {
     console.log(Date() + " - POST /purchase/");
 
-    // https://www.geeksforgeeks.org/node-js-crud-operations-using-mongoose-and-mongodb-atlas/
-    // https://mongoosejs.com/docs/models.html
-    let amount = 0; // TODO: obtener precio del asset
-    Purchase.create({
-        buyerId: req.body.buyerId,
-        sellerId: req.body.sellerId,
-        assetId: req.body.assetId,
-        amount: amount,
-        state: 'Pending',
-    }, function (err, purchase) {
-        if (err)
-            return res.status(400).json('Bad request');
-        else if (purchase) {
-            console.log(Date() + " - Purchase created");
-            return res.status(201).json(purchase._doc);
-        } else
-            return res.status(500).json("Internal server error");
-    });
+    if (req.body['g-recaptcha-response'] === undefined || req.body['g-recaptcha-response'] === '' || req.body['g-recaptcha-response'] === null)
+        return res.status(400).json({ 'status': 'missing-captcha' });
+    else {
+        let verificationUrl = "https://www.google.com/recaptcha/api/siteverify?secret=" + process.env.RECAPTCHA_SECRET_KEY + "&response=" + req.body['g-recaptcha-response'] + "&remoteip=" + req.socket.remoteAddress;
+
+        // Hitting GET request to the URL, Google will respond with success or error scenario.
+        request(verificationUrl, { json: true }, (error, response, body) => {
+            // Success will be true or false depending upon captcha validation.
+            if (body.success !== undefined && !body.success)
+                return res.status(400).json({ 'status': 'invalid-captcha' });
+            else {
+                // https://www.geeksforgeeks.org/node-js-crud-operations-using-mongoose-and-mongodb-atlas/
+                // https://mongoosejs.com/docs/models.html
+                let amount = 0; // TODO: obtener precio del asset
+                let purchase = new Purchase({
+                    buyerId: req.body.buyerId,
+                    sellerId: req.body.sellerId,
+                    assetId: req.body.assetId,
+                    amount: amount,
+                    state: 'Pending',
+                });
+
+                let validationErrors = purchase.validateSync();
+                if (validationErrors)
+                    return res.status(400).json(validationErrors.message);
+                else
+                    purchase.save((err) => {
+                        if (err)
+                            return res.status(400).json({ 'status': 'invalid-purchase' });
+                        else {
+                            console.log(Date() + " - Purchase created");
+                            return res.status(201).json(purchase._doc);
+                        }
+                    });
+            }
+        });
+    }
 });
 
 
