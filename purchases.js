@@ -3,15 +3,15 @@ const mongoose = require('mongoose');
 // We define the entity "Purchase" schema
 const purchaseSchema = new mongoose.Schema({
     buyerId: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
         required: [true, "The purchase must have a buyer who created it"]
-    }, // no es type: mongoose.Schema.Types.ObjectId ??
+    },
     sellerId: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
         required: [true, "The purchase must have a seller who owns the asset"]
     },
     assetId: {
-        type: String,
+        type: mongoose.Schema.Types.ObjectId,
         required: [true, "The purchase must have an asset to be purchased"]
     },
     amount: {
