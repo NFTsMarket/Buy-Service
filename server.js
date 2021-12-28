@@ -9,13 +9,16 @@ var BASE_API_PATH = "/api/v1";
 var app = express();
 app.use(bodyParser.json());
 
-app.get("/api/v1/healthz", (req, res) => {
+app.get(BASE_API_PATH + "/healthz", (req, res) => {
     res.sendStatus(200);
 });
 
-// TO-DO: This get to the root should return the documentation of the API
 app.get("/", (req, res) => {
-    res.send("<html><body><h1>Buy Service Home Page</h1></body></html>");
+    res.redirect("https://app.swaggerhub.com/apis-docs/sersanleo/Buy-service/1.0.0");
+});
+
+app.get(BASE_API_PATH + "/", (req, res) => {
+    res.redirect("https://app.swaggerhub.com/apis-docs/sersanleo/Buy-service/1.0.0");
 });
 
 
@@ -151,9 +154,10 @@ app.post(BASE_API_PATH + "/purchase/", (req, res) => {
                 // https://www.geeksforgeeks.org/node-js-crud-operations-using-mongoose-and-mongodb-atlas/
                 // https://mongoosejs.com/docs/models.html
                 let amount = 0; // TODO: obtener precio del asset
+                let sellerId = "61bf7d53888df2955682a7ea"; // TODO: obtener id del seller del asset
                 let purchase = new Purchase({
                     buyerId: req.body.buyerId,
-                    sellerId: req.body.sellerId,
+                    sellerId: sellerId,
                     assetId: req.body.assetId,
                     amount: amount,
                     state: 'Pending',
@@ -168,7 +172,7 @@ app.post(BASE_API_PATH + "/purchase/", (req, res) => {
                             return res.status(400).json({ 'status': 'invalid-purchase' });
                         else {
                             console.log(Date() + " - Purchase created");
-                            return res.status(201).json(purchase._doc);
+                            return res.status(201).json(purchase.cleanedPurchase());
                         }
                     });
             }
@@ -205,7 +209,7 @@ app.put(BASE_API_PATH + "/purchase/:id", async (req, res) => {
             return res.status(500).json("Internal server error");
         } else if (purchase) {
             console.log(Date() + "- Purchase updated");
-            return res.status(200).json(purchase._doc);
+            return res.status(200).json(purchase.cleanedPurchase());
         } else {
             console.log(Date() + "- Purchase not found");
             return res.status(404).json("Purchase not found");
