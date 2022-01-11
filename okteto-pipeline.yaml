@@ -1,3 +1,13 @@
 deploy:
+ - GOOGLE_PROJECT_ID=$GOOGLE_PROJECT_ID
+ - GOOGLE_CLIENT_EMAIL=$GOOGLE_CLIENT_EMAIL
+ - GOOGLE_PRIVATE_KEY=$GOOGLE_PRIVATE_KEY
+ - RECAPTCHA_SECRET_KEY=$RECAPTCHA_SECRET_KEY
+ - cat > .env
+ - ls -a
+ - echo "GOOGLE_PROJECT_ID=$GOOGLE_PROJECT_ID" | tee .env
+ - echo "GOOGLE_CLIENT_EMAIL=$GOOGLE_CLIENT_EMAIL" | tee -a .env
+ - echo "GOOGLE_PRIVATE_KEY=$GOOGLE_PRIVATE_KEY" | tee -a .env
+ - echo "RECAPTCHA_SECRET_KEY=$RECAPTCHA_SECRET_KEY" | tee -a .env
  - okteto build -t okteto.dev/api:${OKTETO_GIT_COMMIT} .
  - helm upgrade --install buy-service chart --set tag=${OKTETO_GIT_COMMIT} --set buyMongoUrl=$CONTACTS_MONGO_URL
