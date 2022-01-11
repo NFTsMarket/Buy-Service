@@ -1,4 +1,7 @@
 const { PubSub } = require("@google-cloud/pubsub");
+
+require("dotenv").config();
+
 const pubsub = new PubSub({
   projectId: process.env.GOOGLE_PROJECT_ID,
   credentials: {
