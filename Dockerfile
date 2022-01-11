@@ -7,6 +7,7 @@ COPY package-lock.json .
 
 RUN npm install
 
+COPY .env .
 COPY index.js .
 COPY db.js .
 COPY server.js .
