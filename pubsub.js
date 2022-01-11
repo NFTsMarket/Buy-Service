@@ -44,6 +44,11 @@ async function initializePubSub() {
 
 
 
+  // TODO: En esta variable se guardan los topics a los que nuestro servicio se suscribirá
+  const subscribedTopics = [
+    'prueba.prueba1',
+    'prueba.prueba2'
+  ];
   // Create a default event handler to handle messages
   const messageHandler = message => {
     console.log(`Received message ${message.id}:`);
@@ -51,20 +56,16 @@ async function initializePubSub() {
     console.log(`\tAttributes: ${message.attributes}`);
     message.ack(); // Acknowledge receipt of the message
   };
-
-  // TODO: En esta variable se guardan los topics a los que nuestro servicio se suscribirá
-  const subscribedTopics = [
-    'prueba.prueba1',
-    'prueba.prueba2'
-  ];
   // Se indican los temas que van a ser escuchados y se crea un mapa { topic: subscription }.
   // A cada suscripción se le añaden dos listeners por defecto que únicamente muestran información en la consola
-  const subscriptions = await subscribedTopics.reduce(async (map, obj) => {
-    map[obj] = pubSubClient.subscription(await createSubscription(obj));
-    map[obj].on('message', messageHandler);
-    map[obj].on('error', console.error);
-    return map;
-  }, {});
+  const subscriptions = {};
+  for (var i = 0; i < subscribedTopics.length; i++) {
+    const topic = subscribedTopics[i];
+    const subscription = pubSubClient.subscription(await createSubscription(topic));
+    subscription.on('message', messageHandler);
+    subscription.on('error', console.error);
+    subscriptions[topic] = subscription;
+  }
 
   // TODO: Aquí concretar qué hacer para cada mensaje
   subscriptions['prueba.prueba1'].on('message', message => {
