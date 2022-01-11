@@ -3,7 +3,7 @@ var bodyParser = require('body-parser');
 const Purchase = require('./purchases');
 const request = require('request');
 var ObjectId = require('mongoose').Types.ObjectId;
-const { publishPubSubMessage, createTopic, createSubscription } = require("./pubsub");
+const { publishMessage } = require("./pubsub");
 
 var BASE_API_PATH = "/api/v1";
 
@@ -15,7 +15,7 @@ app.get(BASE_API_PATH + "/healthz", (req, res) => {
 });
 
 app.get("/", async (req, res) => {
-    // await publishPubSubMessage("testing-topic-2", 'hola');
+    await publishMessage("prueba.prueba1", 'hola');
     res.redirect("https://app.swaggerhub.com/apis-docs/sersanleo/Buy-service/1.0.0");
 });
 
