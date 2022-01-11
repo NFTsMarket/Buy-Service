@@ -13,7 +13,6 @@ COPY db.js .
 COPY server.js .
 COPY purchases.js .
 COPY pubsub.js .
-COPY subscriptions.js .
 
 EXPOSE 3000
 
