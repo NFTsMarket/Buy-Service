@@ -5,6 +5,7 @@ const dbConnect = require('./db');
 
 require("dotenv").config();
 
+console.log(process.env);
 var port = (process.env.PORT || 3000);
 
 console.log("Starting API server at " + port);
