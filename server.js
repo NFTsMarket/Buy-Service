@@ -179,6 +179,7 @@ app.post(BASE_API_PATH + "/purchase/", authorizedClient, (req, res) => {
                             return res.status(400).json({ 'status': 'invalid-purchase' });
                         else {
                             console.log(Date() + " - Purchase created");
+                            publishMessage('purchase-created', purchase.cleanedPurchase());
                             return res.status(201).json(purchase.cleanedPurchase());
                         }
                     });
@@ -216,6 +217,7 @@ app.put(BASE_API_PATH + "/purchase/:id", authorizedClient, async (req, res) => {
             return res.status(500).json("Internal server error");
         } else if (purchase) {
             console.log(Date() + "- Purchase updated");
+            publishMessage('purchase-updated', purchase.cleanedPurchase());
             return res.status(200).json(purchase.cleanedPurchase());
         } else {
             console.log(Date() + "- Purchase not found");
@@ -236,9 +238,10 @@ app.delete(BASE_API_PATH + "/purchase/:id", authorizedClient, (req, res) => {
         Purchase.deleteOne({ _id: req.params.id }, (err, result) => {
             if (err)
                 return res.status(500).json("Internal server error");
-            else if (result.deletedCount > 0)
+            else if (result.deletedCount > 0) {
+                publishMessage('purchase-removed', purchase.cleanedPurchase());
                 return res.status(200).json("Deleted successfully");
-            else
+            } else
                 return res.status(404).json("Purchase not found");
         });
     else

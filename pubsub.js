@@ -36,19 +36,17 @@ async function createSubscription(topic) {
 async function initializePubSub() {
   // TODO: En esta variable se guardan los topics de nuestro microservicio
   const ourTopics = [
-    'prueba.prueba1',
-    'prueba.prueba2'
+    'purchase-created',
+    'purchase-updated',
+    'purchase-removed',
   ];
   // Crea nuestros topics
-  Promise.all(ourTopics.map(topic => createTopic(topic)));
+  await Promise.all(ourTopics.map(topic => createTopic(topic)));
 
 
 
   // TODO: En esta variable se guardan los topics a los que nuestro servicio se suscribirá
-  const subscribedTopics = [
-    'prueba.prueba1',
-    'prueba.prueba2'
-  ];
+  const subscribedTopics = [];
   // Create a default event handler to handle messages
   const messageHandler = message => {
     console.log(`Received message ${message.id}:`);
@@ -68,12 +66,12 @@ async function initializePubSub() {
   }
 
   // TODO: Aquí concretar qué hacer para cada mensaje
-  subscriptions['prueba.prueba1'].on('message', message => {
-    console.log('Listener específico de "prueba.prueba1" llamado');
-  });
-  subscriptions['prueba.prueba2'].on('message', message => {
-    console.log('Otro llamado. Habría que handlear creacion de usuarios y esas cosas.....');
-  });
+  /*  subscriptions['prueba.prueba1'].on('message', message => {
+     console.log('Listener específico de "prueba.prueba1" llamado');
+   });
+   subscriptions['prueba.prueba2'].on('message', message => {
+     console.log('Otro llamado. Habría que handlear creacion de usuarios y esas cosas.....');
+   }); */
 }
 
 module.exports = { initializePubSub, publishMessage };
