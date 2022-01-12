@@ -1,0 +1,62 @@
+# This workflow will do a clean install of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
+
+name: Node.js CI
+
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+    branches: [ develop ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [12.x, 14.x, 16.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+    services:
+      mongo:
+        image: mongo
+        options: >-
+          --health-cmd mongo
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 27017:27017
+    steps:
+    - uses: actions/checkout@v2
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v2
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    - name: Make envfile
+      uses: iamsauravsharma/create-dotenv@v1.2.0
+      env:
+        RECAPTCHA_SECRET_KEY: ${{ secrets.RECAPTCHA_SECRET_KEY}}
+        SECRET_KEY: ${{ secrets.SECRET_KEY}}
+        SAMPLE_JWT: ${{ secrets.SAMPLE_JWT}}
+    - run: npm install -g npm
+    - run: npm ci
+    - run: npm run build --if-present
+    - run: npm test
+    # - run: npm run integration
+      env:
+        MONGO_URL: "mongodb://localhost/test"
+  deploy:
+   needs: build
+   runs-on: ubuntu-latest
+   steps:
+    - name: Okteto Login
+      uses: okteto/login@latest
+      with:
+        token: ${{ secrets.OKTETO_TOKEN }}
+    - name: Okteto Pipeline
+      uses: okteto/pipeline@latest
+      with:
+        name: buy-service
+        namespace: fis-fersolesp
