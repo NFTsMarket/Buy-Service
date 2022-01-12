@@ -9,7 +9,7 @@
   },
   "homepage": "https://github.com/NFTsMarket/Buy-Service",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "start": "node index.js"
   },
   "author": "Sergio Sánchez & Fernando Sola",
@@ -18,8 +18,11 @@
     "@google-cloud/pubsub": "^2.18.4",
     "dotenv": "^10.0.0",
     "express": "^4.17.2",
+    "jest": "^27.4.7",
+    "jest-extended": "^1.2.0",
     "jsonwebtoken": "^8.5.1",
     "mongoose": "^6.0.13",
-    "request": "^2.88.2"
+    "request": "^2.88.2",
+    "supertest": "^6.2.1"
   }
 }
