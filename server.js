@@ -19,8 +19,7 @@ app.get(BASE_API_PATH + "/healthz", (req, res) => {
     res.sendStatus(200);
 });
 
-app.get("/", async (req, res) => {
-    await publishMessage("prueba.prueba1", 'hola');
+app.get("/", (req, res) => {
     res.redirect("https://app.swaggerhub.com/apis-docs/sersanleo/Buy-service/1.0.0");
 });
 
@@ -30,7 +29,7 @@ app.get(BASE_API_PATH + "/", (req, res) => {
 
 
 // GET purchases API method
-app.get(BASE_API_PATH + "/purchase", authorizedClient, (req, res) => {
+app.get(BASE_API_PATH + "/purchase/", authorizedClient, (req, res) => {
     console.log(Date() + " - GET /purchase/");
 
     // We define ordering and limiting parameters obtained from the URI
@@ -107,20 +106,13 @@ app.get(BASE_API_PATH + "/purchase", authorizedClient, (req, res) => {
         if (err) {
             console.log(Date() + "-" + err);
             return res.status(500).json("Internal server error");
-        }
-        else if (purchases && purchases.length < 1) {
+        } else if (purchases && purchases.length < 1) {
             console.log(Date() + "- There are no purchases to show");
             return res.status(404).json("There are no purchases to show");
-        }
-        else {
-            let reponse = {
-                'count': purchases.length,
-                'purchases': purchases.map((purchase) => {
-                    return purchase.cleanedPurchase();
-                })
-            };
-            return res.status(200).json(reponse);
-        }
+        } else
+            return res.status(200).json(purchases.map((purchase) => {
+                return purchase.cleanedPurchase();
+            }));
     });
 });
 
@@ -179,7 +171,7 @@ app.post(BASE_API_PATH + "/purchase/", authorizedClient, (req, res) => {
                             return res.status(400).json({ 'status': 'invalid-purchase' });
                         else {
                             console.log(Date() + " - Purchase created");
-                            publishMessage('purchase-created', purchase.cleanedPurchase());
+                            publishMessage('created-purchase', purchase);
                             return res.status(201).json(purchase.cleanedPurchase());
                         }
                     });
@@ -217,7 +209,7 @@ app.put(BASE_API_PATH + "/purchase/:id", authorizedClient, async (req, res) => {
             return res.status(500).json("Internal server error");
         } else if (purchase) {
             console.log(Date() + "- Purchase updated");
-            publishMessage('purchase-updated', purchase.cleanedPurchase());
+            publishMessage('updated-purchase', purchase);
             return res.status(200).json(purchase.cleanedPurchase());
         } else {
             console.log(Date() + "- Purchase not found");
@@ -239,7 +231,7 @@ app.delete(BASE_API_PATH + "/purchase/:id", authorizedClient, (req, res) => {
             if (err)
                 return res.status(500).json("Internal server error");
             else if (result.deletedCount > 0) {
-                publishMessage('purchase-removed', purchase.cleanedPurchase());
+                publishMessage('deleted-purchase', purchase);
                 return res.status(200).json("Deleted successfully");
             } else
                 return res.status(404).json("Purchase not found");

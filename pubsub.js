@@ -23,7 +23,7 @@ const publishMessage = async function (topic, message) {
 
 async function createTopic(topic) {
   // Crea el topic si no existe. Si ya está creado, no hace nada y oculta el error
-  await pubSubClient.createTopic(topic).then(() => console.log(`Topic ${topic} created`)).catch(err => { });
+  pubSubClient.createTopic(topic).then(() => console.log(`Topic ${topic} created`)).catch(err => { });
 }
 
 async function createSubscription(topic) {
@@ -36,9 +36,9 @@ async function createSubscription(topic) {
 async function initializePubSub() {
   // TODO: En esta variable se guardan los topics de nuestro microservicio
   const ourTopics = [
-    'purchase-created',
-    'purchase-updated',
-    'purchase-removed',
+    'created-purchase',
+    'updated-purchase',
+    'deleted-purchase',
   ];
   // Crea nuestros topics
   await Promise.all(ourTopics.map(topic => createTopic(topic)));
