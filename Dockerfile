@@ -13,6 +13,9 @@ COPY db.js .
 COPY server.js .
 COPY purchases.js .
 COPY pubsub.js .
+COPY middlewares .
+COPY utils .
+
 
 EXPOSE 3000
 
