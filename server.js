@@ -4,8 +4,13 @@ const Purchase = require('./purchases');
 const request = require('request');
 var ObjectId = require('mongoose').Types.ObjectId;
 const { publishMessage } = require("./pubsub");
-
+const jwt = require('jsonwebtoken');
 var BASE_API_PATH = "/api/v1";
+
+const {
+    authorizedAdmin,
+    authorizedClient,
+} = require("./middlewares/authorized-roles");
 
 var app = express();
 app.use(bodyParser.json());
@@ -25,7 +30,7 @@ app.get(BASE_API_PATH + "/", (req, res) => {
 
 
 // GET purchases API method
-app.get(BASE_API_PATH + "/purchase", (req, res) => {
+app.get(BASE_API_PATH + "/purchase", authorizedClient, (req, res) => {
     console.log(Date() + " - GET /purchase/");
 
     // We define ordering and limiting parameters obtained from the URI
@@ -120,7 +125,7 @@ app.get(BASE_API_PATH + "/purchase", (req, res) => {
 });
 
 // GET a specific purchase API method
-app.get(BASE_API_PATH + "/purchase/:id", (req, res) => {
+app.get(BASE_API_PATH + "/purchase/:id", authorizedClient, (req, res) => {
     console.log(Date() + " - GET /purchase/" + req.params.id);
 
     // Check whether the purchase id has a correct format
@@ -139,7 +144,7 @@ app.get(BASE_API_PATH + "/purchase/:id", (req, res) => {
 
 
 // POST a new purchase API method
-app.post(BASE_API_PATH + "/purchase/", (req, res) => {
+app.post(BASE_API_PATH + "/purchase/", authorizedClient, (req, res) => {
     console.log(Date() + " - POST /purchase/");
 
     if (req.body['g-recaptcha-response'] === undefined || req.body['g-recaptcha-response'] === '' || req.body['g-recaptcha-response'] === null)
@@ -185,7 +190,7 @@ app.post(BASE_API_PATH + "/purchase/", (req, res) => {
 
 // PUT a specific purchase to change its state API method
 // ----------- TO-DO -------------
-app.put(BASE_API_PATH + "/purchase/:id", async (req, res) => {
+app.put(BASE_API_PATH + "/purchase/:id", authorizedClient, async (req, res) => {
     console.log(Date() + " - PUT /purchase/" + req.params.id);
 
     // Check whether the purchase id has a correct format
@@ -223,7 +228,7 @@ app.put(BASE_API_PATH + "/purchase/:id", async (req, res) => {
 
 
 // DELETE a specific purchase API method
-app.delete(BASE_API_PATH + "/purchase/:id", (req, res) => {
+app.delete(BASE_API_PATH + "/purchase/:id", authorizedClient, (req, res) => {
     console.log(Date() + " - DELETE /purchase/" + req.params.id);
 
     // Check whether the purchase id has a correct format
