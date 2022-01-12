@@ -7,12 +7,8 @@ COPY package-lock.json .
 
 RUN npm install
 
-COPY .env .
-COPY index.js .
-COPY db.js .
-COPY server.js .
-COPY purchases.js .
-COPY pubsub.js .
+COPY . .
+
 
 EXPOSE 3000
 
