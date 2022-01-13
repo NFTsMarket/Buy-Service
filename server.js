@@ -34,9 +34,9 @@ app.get(BASE_API_PATH + "/purchase/", authorizedClient, (req, res) => {
 
     // We define ordering and limiting parameters obtained from the URI
     let limitatt = ("limit" in req.query && !isNaN(req.query["limit"])) ? req.query["limit"] : 0;
-    let offset = ("offset" in req.query && !isNaN(req.query["offset"])) ? req.query["offset"] : 0;
+    let offset = ("offset" in req.query && !isNaN(req.query["offset"]) && req.query["offset"] >= 0) ? req.query["offset"] : 0;
     let sortatt = ("sort" in req.query) ? req.query["sort"] : null;
-    let order = ("order" in req.query) ? req.query["order"] : 1;
+    let order = ("order" in req.query && req.query["order"] in [-1, 1]) ? req.query["order"] : 1;
 
     // Process the filters from the URI, that is, the properties from schema to filter
     let filters = {};
@@ -156,8 +156,9 @@ app.post(BASE_API_PATH + "/purchase/", authorizedClient, (req, res) => {
                 if (body.success !== undefined && !body.success)
                     return res.status(400).json({ 'status': 'invalid-captcha' });
                 else {
+
                     let buyerId = "61bf7d53888df2955682a7ea"; // TODO: cogerlo del token
-                    let sellerId = "61bf7d53888df2955682a7ea"; // TODO: llamar a la API de product, traer el product y coger el seller
+                    let sellerId = "61bf7d53888df2955682a7ea"; // TODO: llamar a la API de product, si existe el product, traerlo y coger el seller. Sino existe, lanzar 404
                     let amount = 0; // TODO: llamar api de product
                     let purchase = new Purchase({
                         buyerId: buyerId,

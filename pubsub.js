@@ -43,8 +43,8 @@ async function initializePubSub() {
   // Crea nuestros topics
   await Promise.all(ourTopics.map(topic => createTopic(topic)));
 
-
-
+  // Comentado porque no nos vamos a suscribir a ningún servicio
+  /*
   // TODO: En esta variable se guardan los topics a los que nuestro servicio se suscribirá
   const subscribedTopics = [];
   // Create a default event handler to handle messages
@@ -66,12 +66,13 @@ async function initializePubSub() {
   }
 
   // TODO: Aquí concretar qué hacer para cada mensaje
-  /*  subscriptions['prueba.prueba1'].on('message', message => {
-     console.log('Listener específico de "prueba.prueba1" llamado');
-   });
-   subscriptions['prueba.prueba2'].on('message', message => {
-     console.log('Otro llamado. Habría que handlear creacion de usuarios y esas cosas.....');
-   }); */
+  subscriptions['prueba.prueba1'].on('message', message => {
+    console.log('Listener específico de "prueba.prueba1" llamado');
+  });
+  subscriptions['prueba.prueba2'].on('message', message => {
+    console.log('Otro llamado. Habría que handlear creacion de usuarios y esas cosas.....');
+  });
+  */
 }
 
 module.exports = { initializePubSub, publishMessage };
