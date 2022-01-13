@@ -44,7 +44,7 @@ jobs:
     - run: npm ci
     - run: npm run build --if-present
     - run: npm test
-    # - run: npm run integration
+    - run: npm run integration
       env:
         MONGO_URL: "mongodb://localhost/test"
   deploy:
