@@ -10,7 +10,8 @@
   "homepage": "https://github.com/NFTsMarket/Buy-Service",
   "scripts": {
     "test": "jest",
-    "start": "node index.js"
+    "start": "node index.js",
+    "integration": "jest -c jest.integration.config.js"
   },
   "author": "Sergio Sánchez & Fernando Sola",
   "license": "ISC",
