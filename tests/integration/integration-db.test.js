@@ -1,6 +1,6 @@
-const Purchase = require("../purchases.js");
+const Purchase = require("../../purchases.js");
 const mongoose = require("mongoose");
-const dbConnect = require("../db");
+const dbConnect = require("../../db");
 
 describe("Purchases DB connection", () => {
     // Connect to the database
