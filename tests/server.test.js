@@ -8,7 +8,7 @@ describe("Buy service API", () => {
     beforeAll(() => {
         process.env = {
             RECAPTCHA_SECRET_KEY: '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe',
-            SECRET_KEY: '1234567890'
+            SECRET_KEY: 'secret_key'
         };
 
         jwtToken = jwt.sign({ "id": "12345", "email": "juaaloval@gmail.com", "role": "client" }, process.env.SECRET_KEY);
@@ -37,21 +37,21 @@ describe("Buy service API", () => {
             new Purchase({
                 buyerId: "61bf5695b57c6e0471c7147b",
                 sellerId: "61bf7d53888df2955682a7ea",
-                assetId: "61bf5695b57c6e0471c7147b",
+                productId: "61bf5695b57c6e0471c7147b",
                 amount: 37,
                 state: "Pending"
             }),
             new Purchase({
                 buyerId: "61bf5695b57c6e0471c7147b",
                 sellerId: "61bf7d53888df2955682a7ea",
-                assetId: "61bf5695b57c6e0471c7147b",
+                productId: "61bf5695b57c6e0471c7147b",
                 amount: 37,
                 state: "Pending"
             }),
             new Purchase({
                 buyerId: "61bf5695b57c6e0471c7147b",
                 sellerId: "61bf7d53888df2955682a7ea",
-                assetId: "61bf5695b57c6e0471c7147b",
+                productId: "61bf5695b57c6e0471c7147b",
                 amount: 37,
                 state: "Pending"
             })

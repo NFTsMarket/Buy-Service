@@ -10,9 +10,9 @@ const purchaseSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         required: [true, "The purchase must have a seller who owns the asset"]
     },
-    assetId: {
+    productId: {
         type: mongoose.Schema.Types.ObjectId,
-        required: [true, "The purchase must have an asset to be purchased"]
+        required: [true, "The purchase must have a product to be purchased"]
     },
     amount: {
         type: Number,
@@ -43,7 +43,7 @@ purchaseSchema.methods.cleanedPurchase = function () {
         id: this._id,
         buyerId: this.buyerId,
         sellerId: this.sellerId,
-        assetId: this.assetId,
+        productId: this.productId,
         amount: this.amount,
         state: this.state,
         createdAt: this.createdAt

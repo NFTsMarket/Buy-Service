@@ -67,7 +67,7 @@ app.get(BASE_API_PATH + "/purchase/", authorizedClient, (req, res) => {
         if (OjectId.isValid(buyer))
             filters["buyer"] = buyer;
         else
-            return res.status(400).json("Invalid buyer.")
+            return res.status(400).json("Invalid buyer.");
     }
 
     if ("seller" in req.query) {
@@ -75,7 +75,7 @@ app.get(BASE_API_PATH + "/purchase/", authorizedClient, (req, res) => {
         if (OjectId.isValid(seller))
             filters["seller"] = seller;
         else
-            return res.status(400).json("Invalid seller.")
+            return res.status(400).json("Invalid seller.");
     }
 
     if ("amountGte" in req.query) {
@@ -83,7 +83,7 @@ app.get(BASE_API_PATH + "/purchase/", authorizedClient, (req, res) => {
         if (!isNaN(amountGte))
             filters["amount"] = { "$gte": amountGte };
         else
-            return res.status(400).json("Invalid 'amountGte' argument. It must be a number.")
+            return res.status(400).json("Invalid 'amountGte' argument. It must be a number.");
     }
 
     if ("amountLte" in req.query) {
@@ -139,85 +139,86 @@ app.get(BASE_API_PATH + "/purchase/:id", authorizedClient, (req, res) => {
 app.post(BASE_API_PATH + "/purchase/", authorizedClient, (req, res) => {
     console.log(Date() + " - POST /purchase/");
 
-    if (req.body['g-recaptcha-response'] === undefined || req.body['g-recaptcha-response'] === '' || req.body['g-recaptcha-response'] === null)
-        return res.status(400).json({ 'status': 'missing-captcha' });
-    else {
-        let verificationUrl = "https://www.google.com/recaptcha/api/siteverify?secret=" + process.env.RECAPTCHA_SECRET_KEY + "&response=" + req.body['g-recaptcha-response'] + "&remoteip=" + req.socket.remoteAddress;
+    // Comprobar que no existe compra pendiente
+    Purchase.findOne({ productId: req.params.productId, state: 'Pending' }, (err, purchase) => {
+        if (err)
+            return res.status(500).json("Internal server error");
+        else if (purchase)
+            return res.status(403).json("There is already a pending purchase for this product");
 
-        // Hitting GET request to the URL, Google will respond with success or error scenario.
-        request(verificationUrl, { json: true }, (error, response, body) => {
-            // Success will be true or false depending upon captcha validation.
-            if (body.success !== undefined && !body.success)
-                return res.status(400).json({ 'status': 'invalid-captcha' });
-            else {
-                // https://www.geeksforgeeks.org/node-js-crud-operations-using-mongoose-and-mongodb-atlas/
-                // https://mongoosejs.com/docs/models.html
-                let amount = 0; // TODO: obtener precio del asset
-                let sellerId = "61bf7d53888df2955682a7ea"; // TODO: obtener id del seller del asset
-                let purchase = new Purchase({
-                    buyerId: req.body.buyerId,
-                    sellerId: sellerId,
-                    assetId: req.body.assetId,
-                    amount: amount,
-                    state: 'Pending',
-                });
+        if (req.body['g-recaptcha-response'] === undefined || req.body['g-recaptcha-response'] === '' || req.body['g-recaptcha-response'] === null)
+            return res.status(400).json({ 'status': 'missing-captcha' });
+        else {
+            let verificationUrl = "https://www.google.com/recaptcha/api/siteverify?secret=" + process.env.RECAPTCHA_SECRET_KEY + "&response=" + req.body['g-recaptcha-response'] + "&remoteip=" + req.socket.remoteAddress;
 
-                let validationErrors = purchase.validateSync();
-                if (validationErrors)
-                    return res.status(400).json(validationErrors.message);
-                else
-                    purchase.save((err) => {
-                        if (err)
-                            return res.status(400).json({ 'status': 'invalid-purchase' });
-                        else {
-                            console.log(Date() + " - Purchase created");
-                            publishMessage('created-purchase', purchase);
-                            return res.status(201).json(purchase.cleanedPurchase());
-                        }
+            request(verificationUrl, { json: true }, (error, response, body) => {
+                // Success will be true or false depending upon captcha validation.
+                if (body.success !== undefined && !body.success)
+                    return res.status(400).json({ 'status': 'invalid-captcha' });
+                else {
+                    let buyerId = "61bf7d53888df2955682a7ea"; // TODO: cogerlo del token
+                    let sellerId = "61bf7d53888df2955682a7ea"; // TODO: llamar a la API de product, traer el product y coger el seller
+                    let amount = 0; // TODO: llamar api de product
+                    let purchase = new Purchase({
+                        buyerId: buyerId,
+                        sellerId: sellerId,
+                        productId: req.body.productId,
+                        amount: amount,
+                        state: 'Pending',
                     });
-            }
-        });
-    }
+
+                    let validationErrors = purchase.validateSync();
+                    if (validationErrors)
+                        return res.status(400).json(validationErrors.message);
+                    else
+                        purchase.save((err) => {
+                            if (err)
+                                return res.status(500).json("Internal server error");
+                            else {
+                                console.log(Date() + " - Purchase created");
+                                publishMessage('created-purchase', purchase);
+                                return res.status(201).json(purchase.cleanedPurchase());
+                            }
+                        });
+                }
+            });
+        }
+    });
 });
 
 
 // PUT a specific purchase to change its state API method
-// ----------- TO-DO -------------
 app.put(BASE_API_PATH + "/purchase/:id", authorizedClient, async (req, res) => {
     console.log(Date() + " - PUT /purchase/" + req.params.id);
 
     // Check whether the purchase id has a correct format
     if (!ObjectId.isValid(req.params.id)) {
-        console.log(Date() + "- Invalid purchase id");
+        console.log(Date() + " - Invalid purchase id");
         return res.status(400).json("Invalid purchase id");
     }
 
-    // Validate purchase features values according to the schema restrictions defined
-    let validationErrors = new Purchase(req.body).validateSync();
-    if (validationErrors) {
-        console.log(Date() + "- Invalid purchase data");
-        return res.status(400).json(validationErrors.message);
-    }
-
-    // When retreaving and updating a purchase, we need to add {new: true} if we want to get the
-    // updated version of the purchase as response so we can send it to the client
-    // https://stackoverflow.com/questions/32811510/mongoose-findoneandupdate-doesnt-return-updated-document
-    Purchase.findOneAndUpdate({ _id: req.params.id }, req.body, { new: true }, function (err, purchase) {
-        console.log(purchase);
-        if (err) {
-            console.log(Date() + "-" + err);
+    Purchase.findOne({ _id: req.params.purchaseId }, (err, purchase) => {
+        if (err)
             return res.status(500).json("Internal server error");
-        } else if (purchase) {
-            console.log(Date() + "- Purchase updated");
-            publishMessage('updated-purchase', purchase);
-            return res.status(200).json(purchase.cleanedPurchase());
-        } else {
-            console.log(Date() + "- Purchase not found");
-            return res.status(404).json("Purchase not found");
+        else if (purchase == null)
+            return res.status(404).json("The purchase does not exist");
+        else if (purchase.state != 'Pending')
+            return res.status(400).json("The purchase is already accepted");
+
+        // TODO: comprobar que eres el seller
+        if (true) {
+            purchase.state = 'Accepted';
+            purchase.save((err) => {
+                if (err)
+                    return res.status(500).json("Internal server error");
+                else {
+                    console.log(Date() + " - Purchase accepted");
+                    publishMessage('updated-purchase', purchase);
+                    return res.status(200).json(purchase.cleanedPurchase());
+                }
+            });
         }
     });
-
-    // TODO: communication with other APIs
 });
 
 
@@ -226,18 +227,32 @@ app.delete(BASE_API_PATH + "/purchase/:id", authorizedClient, (req, res) => {
     console.log(Date() + " - DELETE /purchase/" + req.params.id);
 
     // Check whether the purchase id has a correct format
-    if (ObjectId.isValid(req.params.id))
-        Purchase.deleteOne({ _id: req.params.id }, (err, result) => {
-            if (err)
-                return res.status(500).json("Internal server error");
-            else if (result.deletedCount > 0) {
-                publishMessage('deleted-purchase', purchase);
-                return res.status(200).json("Deleted successfully");
-            } else
-                return res.status(404).json("Purchase not found");
-        });
-    else
+    if (!ObjectId.isValid(req.params.id)) {
+        console.log(Date() + " - Invalid purchase id");
         return res.status(400).json("Invalid purchase id");
+    }
+
+    Purchase.findOne({ _id: req.params.purchaseId }, (err, purchase) => {
+        if (err)
+            return res.status(500).json("Internal server error");
+        else if (purchase == null)
+            return res.status(404).json("The purchase does not exist");
+        else if (purchase.state != 'Pending')
+            return res.status(400).json("The purchase is already accepted");
+
+        // TODO: comprobar que eres el seller
+        if (true) {
+            purchase.remove((err) => {
+                if (err)
+                    return res.status(500).json("Internal server error");
+                else {
+                    console.log(Date() + " - Purchase deleted");
+                    publishMessage('deleted-purchase', purchase);
+                    return res.status(200).json("Purchase removed");
+                }
+            });
+        }
+    });
 });
 
 
