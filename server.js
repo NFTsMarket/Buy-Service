@@ -14,6 +14,11 @@ const {
 
 var app = express();
 app.use(bodyParser.json());
+app.use(function(req, res, next) {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+    next();
+});
 
 app.get(BASE_API_PATH + "/healthz", (req, res) => {
     res.sendStatus(200);
