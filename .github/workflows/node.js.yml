@@ -40,6 +40,9 @@ jobs:
         RECAPTCHA_SECRET_KEY: ${{ secrets.RECAPTCHA_SECRET_KEY}}
         SECRET_KEY: ${{ secrets.SECRET_KEY}}
         SAMPLE_JWT: ${{ secrets.SAMPLE_JWT}}
+        GOOGLE_PROJECT_ID: ${{ secrets.GOOGLE_PROJECT_ID}}
+        GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL}}
+        GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY}}
     - run: npm install -g npm
     - run: npm ci
     - run: npm run build --if-present
