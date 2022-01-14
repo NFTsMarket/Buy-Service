@@ -158,7 +158,6 @@ app.post(BASE_API_PATH + "/purchase/", authorizedClient, async (req, res) => {
                 if (body.success !== undefined && !body.success)
                     return res.status(400).json({ 'status': 'invalid-captcha' });
                 else {
-
                     let buyerId = req.id; // Este es el ID del usuario
                     let sellerId = "61bf7d53888df2955682a7ea"; // TODO: llamar a la API de product, si existe el product, traerlo y coger el seller. Sino existe, lanzar 404
                     let amount = 0; // TODO: llamar api de product. el auth token es req.headers.Authorization
