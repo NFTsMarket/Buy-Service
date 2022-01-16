@@ -13,6 +13,13 @@ describe("Buy service API", () => {
     let jwtToken;
     let purchases;
     let pubsubPublishMessage;
+    let productFindOne;
+    let product = new Product({
+        _id: '61e358d45a4dea9373b714db',
+        ownerId: '61e358d45a4dea9373b714db',
+        assetId: '61e358d45a4dea9373b714db',
+        price: 50
+    });
 
     beforeAll(() => {
         process.env["SECRET_KEY"] = 'secret_key';
@@ -48,10 +55,13 @@ describe("Buy service API", () => {
 
         pubsubPublishMessage = jest.spyOn(pubsub, 'publishMessage');
         pubsubPublishMessage.mockImplementation((topic, message) => { Promise.resolve(); });
+
+        productFindOne = jest.spyOn(Product, "findOne");
     });
 
     afterEach(() => {
         pubsubPublishMessage.mockClear();
+        productFindOne.mockReset();
     });
 
     describe("GET /", () => {
@@ -92,6 +102,7 @@ describe("Buy service API", () => {
             dbFind.mockImplementation((query, na, no, callback) => {
                 callback(null, purchases);
             });
+            productFindOne.mockReturnValue(product);
 
             return request(app).get(BASE_API_PATH + "/purchase/").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(200);
@@ -279,7 +290,7 @@ describe("Buy service API", () => {
             return request(app).get(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(200);
                 expect(response.body["buyerId"]).toEqual(testUserId);
-                expect(Object.keys(response.body).length).toEqual(6);
+                expect(Object.keys(response.body).length).toEqual(7);
             });
         });
 
@@ -363,15 +374,8 @@ describe("Buy service API", () => {
     });
 
     describe("POST " + BASE_API_PATH + "/purchase/", () => {
-        let productFindOne;
         let purchaseExists;
         let walletFindOne;
-        let product = new Product({
-            _id: '61e358d45a4dea9373b714db',
-            ownerId: '61e358d45a4dea9373b714db',
-            assetId: '61e358d45a4dea9373b714db',
-            price: 50
-        });
         let poorWallet = new Wallet({
             userId: testUserId,
             funds: 0
@@ -384,7 +388,6 @@ describe("Buy service API", () => {
         beforeAll(() => {
             dbFindOne = jest.spyOn(Purchase, "findOne");
             dbSave = jest.spyOn(Purchase.prototype, "save");
-            productFindOne = jest.spyOn(Product, "findOne");
             purchaseExists = jest.spyOn(Purchase, "exists");
             walletFindOne = jest.spyOn(Wallet, "findOne");
         });
@@ -514,7 +517,7 @@ describe("Buy service API", () => {
                 .then((response) => {
                     expect(response.statusCode).toBe(201);
                     expect(response.body["productId"]).toEqual("61e358d45a4dea9373b714db");
-                    expect(Object.keys(response.body).length).toEqual(6);
+                    expect(Object.keys(response.body).length).toEqual(7);
                     expect(pubsubPublishMessage).toHaveBeenCalledTimes(1);
                 })
         });
@@ -707,7 +710,7 @@ describe("Buy service API", () => {
             return request(app).put(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(200);
                 expect(response.body["productId"]).toEqual("61e146528daf121153272256");
-                expect(Object.keys(response.body).length).toEqual(6);
+                expect(Object.keys(response.body).length).toEqual(7);
                 expect(pubsubPublishMessage).toHaveBeenCalledTimes(1);
             })
         });
