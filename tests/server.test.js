@@ -1,21 +1,24 @@
 const app = require("../server.js");
 const request = require("supertest");
 const Purchase = require('../purchases.js');
+const Product = require('../product.js');
+const Wallet = require('../wallet.js');
 const jwt = require("jsonwebtoken");
-const pubsubs = require("../pubsub");
+const pubsub = require('../pubsub');
 
 var BASE_API_PATH = "/api/v1";
 
 describe("Buy service API", () => {
-
+    const testUserId = "61e146528daf121153272257";
     let jwtToken;
     let purchases;
+    let pubsubPublishMessage;
 
     beforeAll(() => {
         process.env["SECRET_KEY"] = 'secret_key';
-        // RECAPTCHA_SECRET_KEY: '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe',
+        process.env["RECAPTCHA_SECRET_KEY"] = '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe';
 
-        jwtToken = jwt.sign({ "id": "61e146528daf121153272257", "email": "juaaloval@gmail.com", "role": "client" }, process.env.SECRET_KEY);
+        jwtToken = jwt.sign({ "id": testUserId, "email": "juaaloval@gmail.com", "role": "client" }, process.env.SECRET_KEY);
 
         require("dotenv").config();
 
@@ -42,6 +45,13 @@ describe("Buy service API", () => {
                 state: "Accepted"
             })
         ];
+
+        pubsubPublishMessage = jest.spyOn(pubsub, 'publishMessage');
+        pubsubPublishMessage.mockImplementation((topic, message) => { Promise.resolve(); });
+    });
+
+    afterEach(() => {
+        pubsubPublishMessage.mockClear();
     });
 
     describe("GET /", () => {
@@ -83,7 +93,7 @@ describe("Buy service API", () => {
                 callback(null, purchases);
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase/").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase/").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(200);
                 expect(response.body).toHaveLength(3);
             })
@@ -94,7 +104,7 @@ describe("Buy service API", () => {
                 callback(null, purchases);
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase?before=invalid_value").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase?before=invalid_value").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(400);
                 expect(response.body).toBe("Invalid 'before' argument. It must be in UTC format.");
             })
@@ -105,7 +115,7 @@ describe("Buy service API", () => {
                 callback(null, purchases);
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase?before=2024-03-21").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase?before=2024-03-21").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(200);
                 expect(response.body).toHaveLength(3);
             })
@@ -116,7 +126,7 @@ describe("Buy service API", () => {
                 callback(null, purchases);
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase?after=invalid_value").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase?after=invalid_value").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(400);
                 expect(response.body).toBe("Invalid 'after' argument. It must be in UTC format.");
             })
@@ -127,20 +137,20 @@ describe("Buy service API", () => {
                 callback(null, purchases);
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase?after=1990-03-21").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase?after=1990-03-21").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(200);
                 expect(response.body).toHaveLength(3);
             })
         });
 
-        it("should return 400 error invalid buyer", () => {
+        it("should return 400 error invalid buyer id", () => {
             dbFind.mockImplementation((query, na, no, callback) => {
                 callback(null, purchases);
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase?buyer=invalid_id").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase?buyer=invalid_id").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(400);
-                expect(response.body).toBe("Invalid buyer.");
+                expect(response.body).toBe("Invalid buyer id.");
             })
         });
 
@@ -149,20 +159,20 @@ describe("Buy service API", () => {
                 callback(null, purchases);
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase?buyer=61e012398daf12115327224b").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase?buyer=61e012398daf12115327224b").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(200);
                 expect(response.body).toHaveLength(3);
             })
         });
 
-        it("should return 400 error invalid seller", () => {
+        it("should return 400 error invalid seller id", () => {
             dbFind.mockImplementation((query, na, no, callback) => {
                 callback(null, purchases);
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase?seller=invalid_id").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase?seller=invalid_id").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(400);
-                expect(response.body).toBe("Invalid seller.");
+                expect(response.body).toBe("Invalid seller id.");
             })
         });
 
@@ -171,7 +181,7 @@ describe("Buy service API", () => {
                 callback(null, purchases);
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase?seller=61e012398daf12115327224b").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase?seller=61e012398daf12115327224b").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(200);
                 expect(response.body).toHaveLength(3);
             })
@@ -182,7 +192,7 @@ describe("Buy service API", () => {
                 callback(null, purchases);
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase?amountGte=NaN").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase?amountGte=NaN").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(400);
                 expect(response.body).toBe("Invalid 'amountGte' argument. It must be a number.");
             })
@@ -193,7 +203,7 @@ describe("Buy service API", () => {
                 callback(null, purchases);
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase?amountGte=10").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase?amountGte=10").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(200);
                 expect(response.body).toHaveLength(3);
             })
@@ -204,7 +214,7 @@ describe("Buy service API", () => {
                 callback(null, purchases);
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase?amountLte=NaN").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase?amountLte=NaN").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(400);
                 expect(response.body).toBe("Invalid 'amountLte' argument. It must be a number.");
             })
@@ -215,7 +225,7 @@ describe("Buy service API", () => {
                 callback(null, purchases);
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase?amountLte=50").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase?amountLte=50").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(200);
                 expect(response.body).toHaveLength(3);
             })
@@ -226,7 +236,7 @@ describe("Buy service API", () => {
                 callback(null, []);
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase/").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase/").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(200);
                 expect(response.body).toHaveLength(0);
 
@@ -239,7 +249,7 @@ describe("Buy service API", () => {
                 callback(true, null);
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase/").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase/").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(500);
                 expect(response.body).toBe("Internal server error");
 
@@ -257,14 +267,20 @@ describe("Buy service API", () => {
 
         it("should return a purchase in DB", () => {
             dbFind.mockImplementation((query, callback) => {
-                callback(null, purchases[0]);
+                callback(null, new Purchase({
+                    buyerId: testUserId,
+                    sellerId: "61e012758daf12115327224d",
+                    productId: "61e048908daf12115327224e",
+                    amount: 37,
+                    state: "Pending"
+                }));
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(200);
-                expect(response.body["buyerId"]).toEqual("61bf5695b57c6e0471c7147b");
+                expect(response.body["buyerId"]).toEqual(testUserId);
                 expect(Object.keys(response.body).length).toEqual(6);
-            })
+            });
         });
 
         it("should return 400 error: invalid id", () => {
@@ -272,9 +288,20 @@ describe("Buy service API", () => {
                 callback(null, null);
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase/invalid_id").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase/invalid_id").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(400);
                 expect(response.body).toBe("Invalid purchase id");
+            })
+        });
+
+        it("should return 401 error: unauthorized", () => {
+            dbFind.mockImplementation((query, callback) => {
+                callback(null, purchases[0]);
+            });
+
+            return request(app).get(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
+                expect(response.statusCode).toBe(401);
+                expect(response.body).toBe("Unauthorized.");
             })
         });
 
@@ -283,7 +310,7 @@ describe("Buy service API", () => {
                 callback(null, null);
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(404);
                 expect(response.body).toBe("Purchase not found");
 
@@ -295,7 +322,7 @@ describe("Buy service API", () => {
                 callback(true, null);
             });
 
-            return request(app).get(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", jwtToken).then((response) => {
+            return request(app).get(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(500);
                 expect(response.body).toBe("Internal server error");
 
@@ -335,30 +362,61 @@ describe("Buy service API", () => {
         });
     });
 
-    // ---------------------------------------------------------------------------------------------------------------------------------
-    // ---------------------------------------------------------------------------------------------------------------------------------
-
     describe("POST " + BASE_API_PATH + "/purchase/", () => {
-        
+        let productFindOne;
+        let purchaseExists;
+        let walletFindOne;
+        let product = new Product({
+            _id: '61e358d45a4dea9373b714db',
+            ownerId: '61e358d45a4dea9373b714db',
+            assetId: '61e358d45a4dea9373b714db',
+            price: 50
+        });
+        let poorWallet = new Wallet({
+            userId: testUserId,
+            funds: 0
+        });
+        let richWallet = new Wallet({
+            userId: testUserId,
+            funds: 10000
+        });
+
         beforeAll(() => {
             dbFindOne = jest.spyOn(Purchase, "findOne");
             dbSave = jest.spyOn(Purchase.prototype, "save");
-
-            const addMock = jest.spyOn(pubsubs, "publishMessage");
-            addMock.mockImplementation( (query)=>{
-                return true;
-            });
-            
+            productFindOne = jest.spyOn(Product, "findOne");
+            purchaseExists = jest.spyOn(Purchase, "exists");
+            walletFindOne = jest.spyOn(Wallet, "findOne");
         });
 
-        it("should return 500 internal server error", () => {
-            dbFindOne.mockImplementation((query, callback) => {
-                callback(true, null);
-            });
+        it("should return 403 product already being purchased", () => {
+            productFindOne.mockReturnValueOnce(product);
+            purchaseExists.mockReturnValueOnce(true);
+            walletFindOne.mockReturnValueOnce(richWallet);
 
-            return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", jwtToken).then((response) => {
-                expect(response.statusCode).toBe(500);
-                expect(response.body).toBe("Internal server error");
+            const messageBody = {
+                "g-recaptcha-response": "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI",
+                "productId": "61e146528daf121153272256"
+            };
+
+            return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", 'Bearer ' + jwtToken).send(messageBody).then((response) => {
+                expect(response.statusCode).toBe(403);
+                expect(response.body).toBe("There is already a pending purchase for this product");
+            })
+        });
+
+        it("should return 403 not enoughs funds", () => {
+            productFindOne.mockReturnValueOnce(product);
+            walletFindOne.mockReturnValueOnce(poorWallet);
+
+            const messageBody = {
+                "g-recaptcha-response": "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI",
+                "productId": "61e146528daf121153272256"
+            };
+
+            return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", 'Bearer ' + jwtToken).send(messageBody).then((response) => {
+                expect(response.statusCode).toBe(403);
+                expect(response.body).toBe("You don't have enough funds in your wallet");
             })
         });
 
@@ -366,60 +424,106 @@ describe("Buy service API", () => {
             dbFindOne.mockImplementation((query, callback) => {
                 callback(null, []);
             });
+            productFindOne.mockReturnValueOnce(product);
+            purchaseExists.mockReturnValueOnce(true);
+            walletFindOne.mockReturnValueOnce(richWallet);
 
-            return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", jwtToken).then((response) => {
+            const messageBody = {
+                "g-recaptcha-response": "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI",
+                "productId": "61e146528daf121153272256"
+            };
+
+            return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", 'Bearer ' + jwtToken).send(messageBody).then((response) => {
                 expect(response.statusCode).toBe(403);
                 expect(response.body).toBe("There is already a pending purchase for this product");
             })
         });
 
-        it("should return 400 error: missing captcha", () => {
+        it("should return 403 error: you can not buy your own product", () => {
             dbFindOne.mockImplementation((query, callback) => {
-                callback(null, null);
+                callback(null, []);
             });
+            productFindOne.mockReturnValueOnce(new Product({
+                ownerId: testUserId,
+                assetId: '61e358d45a4dea9373b714db',
+                price: 50
+            }));
+            walletFindOne.mockReturnValueOnce(richWallet);
 
-            return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", jwtToken).then((response) => {
+            const messageBody = {
+                "g-recaptcha-response": "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI",
+                "productId": "61e146528daf121153272256"
+            };
+
+            return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", 'Bearer ' + jwtToken).send(messageBody).then((response) => {
+                expect(response.statusCode).toBe(403);
+                expect(response.body).toBe("You can not buy your own product");
+            })
+        });
+
+        it("should return 400 error: missing captcha", () => {
+            productFindOne.mockReturnValueOnce(product);
+            purchaseExists.mockReturnValueOnce(false);
+            walletFindOne.mockReturnValueOnce(richWallet);
+
+            const messageBody = {
+                "productId": "61e146528daf121153272256"
+            };
+
+            return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", 'Bearer ' + jwtToken).send(messageBody).then((response) => {
                 expect(response.statusCode).toBe(400);
-                expect(response.body["status"]).toBe('missing-captcha');
+                expect(response.body).toBe('Missing reCAPTCHA response.');
             })
         });
 
         // --------------------------------------------------------------------------
         // This test is commented in order to not exceed our reCAPTCHA free use limit
         // --------------------------------------------------------------------------
-        // it("should return 400 error: invalid captcha", () => {
+        // it("should return 401 error: invalid captcha", () => {
         //     dbFindOne.mockImplementation((query, callback) => {
         //         callback(null, null);
         //     });
 
-        //     return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", jwtToken).send({"g-recaptcha-response": "invalid_captcha"})
-        //     .then((response) => {
-        //         expect(response.statusCode).toBe(400);
-        //         expect(response.body["status"]).toBe('invalid-captcha');
-        //     })
+        //     let messageBody = {
+        //         "g-recaptcha-response": "invalid_captcha",
+        //         "productId": "61e146528daf121153272256"
+        //     };
+
+        //     return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", 'Bearer ' + jwtToken).send(messageBody)
+        //         .then((response) => {
+        //             expect(response.statusCode).toBe(401);
+        //             expect(response.body).toBe('Invalid reCAPTCHA response.');
+        //         })
         // });
 
         it("should insert purchase in DB", () => {
+            productFindOne.mockReturnValueOnce(product);
+            purchaseExists.mockReturnValueOnce(false);
+            walletFindOne.mockReturnValueOnce(richWallet);
+
             dbSave.mockImplementation((callback) => {
                 callback(null);
             });
 
-            process.env['RECAPTCHA_SECRET_KEY'] = '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe';
-
             let messageBody = {
                 "g-recaptcha-response": "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI",
-                "productId": "61e146528daf121153272256"
+                "productId": "61e358d45a4dea9373b714db"
             };
 
-            return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", jwtToken).send(messageBody)
-            .then((response) => {
-                expect(response.statusCode).toBe(201);
-                expect(response.body["productId"]).toEqual("61e146528daf121153272256");
-                expect(Object.keys(response.body).length).toEqual(6);
-            })
+            return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", 'Bearer ' + jwtToken).send(messageBody)
+                .then((response) => {
+                    expect(response.statusCode).toBe(201);
+                    expect(response.body["productId"]).toEqual("61e358d45a4dea9373b714db");
+                    expect(Object.keys(response.body).length).toEqual(6);
+                    expect(pubsubPublishMessage).toHaveBeenCalledTimes(1);
+                })
         });
 
         it("should return 500 error inserting in DB", () => {
+            productFindOne.mockReturnValueOnce(product);
+            purchaseExists.mockReturnValueOnce(false);
+            walletFindOne.mockReturnValueOnce(richWallet);
+
             dbSave.mockImplementation((callback) => {
                 callback(true);
             });
@@ -429,11 +533,11 @@ describe("Buy service API", () => {
                 "productId": "61e146528daf121153272256"
             };
 
-            return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", jwtToken).send(messageBody)
-            .then((response) => {
-                expect(response.statusCode).toBe(500);
-                expect(response.body).toEqual("Internal server error inserting purchase in DB");
-            })
+            return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", 'Bearer ' + jwtToken).send(messageBody)
+                .then((response) => {
+                    expect(response.statusCode).toBe(500);
+                    expect(response.body).toEqual("Internal server error inserting purchase in DB");
+                })
         });
 
         it("should return 400 error: invalid productId", () => {
@@ -446,49 +550,26 @@ describe("Buy service API", () => {
                 "productId": "invalid_productId"
             };
 
-            return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", jwtToken).send(messageBody)
-            .then((response) => {
-                console.log(response.body);
-                expect(response.statusCode).toBe(400);
-                expect(response.body.split('"')[0]).toBe("Purchase validation failed: productId: Cast to ObjectId failed for value ");
-            })
-        });
-        
-        it("should return 400 error: missing productId", () => {
-            dbSave.mockImplementation((callback) => {
-                callback(null);
-            });
-
-            let messageBody = {
-                "g-recaptcha-response": "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI",
-            };
-
-            return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", jwtToken).send(messageBody)
-            .then((response) => {
-                console.log(response.body);
-                expect(response.statusCode).toBe(400);
-                expect(response.body).toBe("Purchase validation failed: productId: The purchase must have a product to be purchased");
-            })
+            return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", 'Bearer ' + jwtToken).send(messageBody)
+                .then((response) => {
+                    expect(response.statusCode).toBe(400);
+                    expect(response.body.split('"')[0]).toBe("Invalid product id");
+                })
         });
 
-        it("should return 400 error: invalid buyerId", () => {
-            dbSave.mockImplementation((callback) => {
-                callback(null);
-            });
-
-            let badjwtToken = jwt.sign({ "id": "invalid_id", "email": "juaaloval@gmail.com", "role": "client" }, process.env.SECRET_KEY);
+        it("should return 404 error: product not found", () => {
+            productFindOne.mockReturnValueOnce(false);
 
             let messageBody = {
                 "g-recaptcha-response": "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI",
                 "productId": "61e146528daf121153272256"
             };
 
-            return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", badjwtToken).send(messageBody)
-            .then((response) => {
-                console.log(response.body);
-                expect(response.statusCode).toBe(400);
-                expect(response.body).toBe('Purchase validation failed: buyerId: Cast to ObjectId failed for value \"invalid_id\" (type string) at path \"buyerId\"');
-            })
+            return request(app).post(BASE_API_PATH + "/purchase/").set("Authorization", 'Bearer ' + jwtToken).send(messageBody)
+                .then((response) => {
+                    expect(response.statusCode).toBe(404);
+                    expect(response.body).toBe("Product not found");
+                })
         });
     });
 
@@ -500,17 +581,11 @@ describe("Buy service API", () => {
         beforeAll(() => {
             dbFindOne = jest.spyOn(Purchase, "findOne");
             dbSave = jest.spyOn(Purchase.prototype, "save");
-
-            const addMock = jest.spyOn(pubsubs, "publishMessage");
-            addMock.mockImplementation( (query)=>{
-                return true;
-            });
-            
         });
 
         it("should return 400 error: invalid purchase id", () => {
 
-            return request(app).put(BASE_API_PATH + "/purchase/invalid_purchase_id").set("Authorization", jwtToken).then((response) => {
+            return request(app).put(BASE_API_PATH + "/purchase/invalid_purchase_id").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(400);
                 expect(response.body).toBe("Invalid purchase id");
             })
@@ -521,17 +596,17 @@ describe("Buy service API", () => {
                 callback(true, null);
             });
 
-            return request(app).put(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", jwtToken).then((response) => {
+            return request(app).put(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(500);
                 expect(response.body).toBe("Internal server error");
 
             })
         });
 
-        
+
         it("should return 400 error: purchased already accepted", () => {
             dbFindOne.mockImplementation((query, callback) => {
-                callback(null, 
+                callback(null,
                     {
                         id: '61e012398daf12115327224b',
                         buyerId: '61bf7d53888df2955682a7ea',
@@ -539,11 +614,11 @@ describe("Buy service API", () => {
                         productId: '61e146528daf121153272256',
                         amount: 0,
                         state: 'Accepted'
-                      }
-                  );
+                    }
+                );
             });
 
-            return request(app).put(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", jwtToken).then((response) => {
+            return request(app).put(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(400);
                 expect(response.body).toBe("The purchase is already accepted");
 
@@ -552,7 +627,7 @@ describe("Buy service API", () => {
 
         it("should return 403 error: unauthorised", () => {
             dbFindOne.mockImplementation((query, callback) => {
-                callback(null, 
+                callback(null,
                     {
                         id: '61e012398daf12115327224b',
                         buyerId: '61bf7d53888df2955682a7ea',
@@ -560,8 +635,8 @@ describe("Buy service API", () => {
                         productId: '61e146528daf121153272256',
                         amount: 0,
                         state: 'Pending'
-                      }
-                  );
+                    }
+                );
             });
 
             let badjwtToken = jwt.sign({ "id": "61bf7d53888df2955682a7ea", "email": "juaaloval@gmail.com", "role": "client" }, process.env.SECRET_KEY);
@@ -578,7 +653,7 @@ describe("Buy service API", () => {
                 callback(null, null);
             });
 
-            return request(app).put(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", jwtToken).then((response) => {
+            return request(app).put(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(404);
                 expect(response.body).toBe("The purchase does not exist");
 
@@ -588,7 +663,7 @@ describe("Buy service API", () => {
         it("should return 500 error updating the purchase in DB", () => {
 
             dbFindOne.mockImplementation((query, callback) => {
-                callback(null, 
+                callback(null,
                     new Purchase({
                         id: '61e012398daf12115327224b',
                         buyerId: '61bf7d53888df2955682a7ea',
@@ -596,16 +671,15 @@ describe("Buy service API", () => {
                         productId: '61e146528daf121153272256',
                         amount: 0,
                         state: 'Pending'
-                      })
-                  );
+                    })
+                );
             });
 
             dbSave.mockImplementation((callback) => {
                 callback(true);
             });
 
-            return request(app).put(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", jwtToken).then((response) => {
-                console.log(response.body);
+            return request(app).put(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(500);
                 expect(response.body).toBe("Internal server error saving data to DB");
 
@@ -613,9 +687,8 @@ describe("Buy service API", () => {
         });
 
         it("should update the purchase in DB", () => {
-
             dbFindOne.mockImplementation((query, callback) => {
-                callback(null, 
+                callback(null,
                     new Purchase({
                         id: '61e012398daf12115327224b',
                         buyerId: '61bf7d53888df2955682a7ea',
@@ -623,19 +696,19 @@ describe("Buy service API", () => {
                         productId: '61e146528daf121153272256',
                         amount: 0,
                         state: 'Pending'
-                      })
-                  );
+                    })
+                );
             });
 
             dbSave.mockImplementation((callback) => {
                 callback(null);
             });
 
-            return request(app).put(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", jwtToken).then((response) => {
-                console.log(response.body);
+            return request(app).put(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(200);
                 expect(response.body["productId"]).toEqual("61e146528daf121153272256");
                 expect(Object.keys(response.body).length).toEqual(6);
+                expect(pubsubPublishMessage).toHaveBeenCalledTimes(1);
             })
         });
     });
@@ -648,17 +721,11 @@ describe("Buy service API", () => {
         beforeAll(() => {
             dbFindOne = jest.spyOn(Purchase, "findOne");
             dbRemove = jest.spyOn(Purchase.prototype, "remove");
-
-            const addMock = jest.spyOn(pubsubs, "publishMessage");
-            addMock.mockImplementation( (query)=>{
-                return true;
-            });
-            
         });
 
         it("should return 400 error: invalid purchase id", () => {
 
-            return request(app).delete(BASE_API_PATH + "/purchase/invalid_purchase_id").set("Authorization", jwtToken).then((response) => {
+            return request(app).delete(BASE_API_PATH + "/purchase/invalid_purchase_id").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(400);
                 expect(response.body).toBe("Invalid purchase id");
             })
@@ -669,17 +736,17 @@ describe("Buy service API", () => {
                 callback(true, null);
             });
 
-            return request(app).delete(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", jwtToken).then((response) => {
+            return request(app).delete(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(500);
                 expect(response.body).toBe("Internal server error");
 
             })
         });
 
-        
+
         it("should return 400 error: purchased already accepted", () => {
             dbFindOne.mockImplementation((query, callback) => {
-                callback(null, 
+                callback(null,
                     {
                         id: '61e012398daf12115327224b',
                         buyerId: '61bf7d53888df2955682a7ea',
@@ -687,11 +754,11 @@ describe("Buy service API", () => {
                         productId: '61e146528daf121153272256',
                         amount: 0,
                         state: 'Accepted'
-                      }
-                  );
+                    }
+                );
             });
 
-            return request(app).delete(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", jwtToken).then((response) => {
+            return request(app).delete(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(400);
                 expect(response.body).toBe("The purchase is already accepted");
 
@@ -700,7 +767,7 @@ describe("Buy service API", () => {
 
         it("should return 403 error: unauthorised", () => {
             dbFindOne.mockImplementation((query, callback) => {
-                callback(null, 
+                callback(null,
                     {
                         id: '61e012398daf12115327224b',
                         buyerId: '61bf7d53888df2955682a7ea',
@@ -708,8 +775,8 @@ describe("Buy service API", () => {
                         productId: '61e146528daf121153272256',
                         amount: 0,
                         state: 'Pending'
-                      }
-                  );
+                    }
+                );
             });
 
             let badjwtToken = jwt.sign({ "id": "61bf7d53888df2955682a7ea", "email": "juaaloval@gmail.com", "role": "client" }, process.env.SECRET_KEY);
@@ -726,7 +793,7 @@ describe("Buy service API", () => {
                 callback(null, null);
             });
 
-            return request(app).delete(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", jwtToken).then((response) => {
+            return request(app).delete(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(404);
                 expect(response.body).toBe("The purchase does not exist");
 
@@ -736,7 +803,7 @@ describe("Buy service API", () => {
         it("should return 500 error deleting the purchase in DB", () => {
 
             dbFindOne.mockImplementation((query, callback) => {
-                callback(null, 
+                callback(null,
                     new Purchase({
                         id: '61e012398daf12115327224b',
                         buyerId: '61bf7d53888df2955682a7ea',
@@ -744,16 +811,15 @@ describe("Buy service API", () => {
                         productId: '61e146528daf121153272256',
                         amount: 0,
                         state: 'Pending'
-                      })
-                  );
+                    })
+                );
             });
 
             dbRemove.mockImplementation((callback) => {
                 callback(true);
             });
 
-            return request(app).delete(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", jwtToken).then((response) => {
-                console.log(response.body);
+            return request(app).delete(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(500);
                 expect(response.body).toBe("Internal server error saving data to DB");
 
@@ -761,9 +827,8 @@ describe("Buy service API", () => {
         });
 
         it("should delete the purchase in DB", () => {
-
             dbFindOne.mockImplementation((query, callback) => {
-                callback(null, 
+                callback(null,
                     new Purchase({
                         id: '61e012398daf12115327224b',
                         buyerId: '61bf7d53888df2955682a7ea',
@@ -771,18 +836,18 @@ describe("Buy service API", () => {
                         productId: '61e146528daf121153272256',
                         amount: 0,
                         state: 'Pending'
-                      })
-                  );
+                    })
+                );
             });
 
             dbRemove.mockImplementation((callback) => {
                 callback(null);
             });
 
-            return request(app).delete(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", jwtToken).then((response) => {
-                console.log(response.body);
+            return request(app).delete(BASE_API_PATH + "/purchase/61e012398daf12115327224b").set("Authorization", 'Bearer ' + jwtToken).then((response) => {
                 expect(response.statusCode).toBe(200);
                 expect(response.body).toEqual("Purchase removed");
+                expect(pubsubPublishMessage).toHaveBeenCalledTimes(1);
             })
         });
     });

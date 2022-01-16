@@ -1,4 +1,5 @@
 const { PubSub } = require("@google-cloud/pubsub");
+const Product = require('./product');
 
 require("dotenv").config();
 
@@ -26,15 +27,19 @@ async function createTopic(topic) {
   pubSubClient.createTopic(topic).then(() => console.log(`Topic ${topic} created`)).catch(err => { });
 }
 
+function getSubscriptionName(topic) {
+  return 'buy-' + topic;
+}
+
 async function createSubscription(topic) {
   // Crea la suscripción si no existe. Si ya está creada, no hace nada y oculta el error
-  const subscriptionName = 'purchase_service-' + topic;
+  const subscriptionName = getSubscriptionName(topic);
   await pubSubClient.topic(topic).createSubscription(subscriptionName).then(() => console.log(`Subscription ${subscriptionName} to topic ${topic} created`)).catch(err => { });
   return subscriptionName;
 }
 
-async function initializePubSub() {
-  // TODO: En esta variable se guardan los topics de nuestro microservicio
+async function initializePubSub(createNewSubscriptions = false) {
+  // Poner createNewSubscriptions a true cuando se hayan modificado los subscribedTopics
   const ourTopics = [
     'created-purchase',
     'updated-purchase',
@@ -44,35 +49,59 @@ async function initializePubSub() {
   await Promise.all(ourTopics.map(topic => createTopic(topic)));
 
   // Comentado porque no nos vamos a suscribir a ningún servicio
-  /*
-  // TODO: En esta variable se guardan los topics a los que nuestro servicio se suscribirá
-  const subscribedTopics = [];
-  // Create a default event handler to handle messages
-  const messageHandler = message => {
-    console.log(`Received message ${message.id}:`);
-    console.log(`\tData: ${message.data}`);
-    console.log(`\tAttributes: ${message.attributes}`);
-    message.ack(); // Acknowledge receipt of the message
-  };
+  const subscribedTopics = [
+    'created-product',
+    'updated-product',
+    'deleted-product'
+  ];
   // Se indican los temas que van a ser escuchados y se crea un mapa { topic: subscription }.
   // A cada suscripción se le añaden dos listeners por defecto que únicamente muestran información en la consola
   const subscriptions = {};
   for (var i = 0; i < subscribedTopics.length; i++) {
     const topic = subscribedTopics[i];
-    const subscription = pubSubClient.subscription(await createSubscription(topic));
-    subscription.on('message', messageHandler);
+    const subscription = pubSubClient.subscription((createNewSubscriptions) ? await createSubscription(topic) : getSubscriptionName(topic));
+
+    subscription.on('message', message => {
+      console.log(`Received message ${message.id} from topic ${topic}:`);
+      console.log(`\tData: ${message.data}`);
+      message.ack();
+    });
+
     subscription.on('error', console.error);
+
     subscriptions[topic] = subscription;
   }
 
-  // TODO: Aquí concretar qué hacer para cada mensaje
-  subscriptions['prueba.prueba1'].on('message', message => {
-    console.log('Listener específico de "prueba.prueba1" llamado');
+  subscriptions['created-product'].on('message', async message => {
+    let product = JSON.parse(message.data);
+
+    try {
+      await Product.create({
+        _id: product.id,
+        ownerId: product.owner,
+        assetId: product.picture,
+        price: product.price
+      });
+    } catch { }
   });
-  subscriptions['prueba.prueba2'].on('message', message => {
-    console.log('Otro llamado. Habría que handlear creacion de usuarios y esas cosas.....');
+
+  subscriptions['updated-product'].on('message', async message => {
+    let product = JSON.parse(message.data);
+
+    try {
+      await Product.updateOne({ _id: product.id }, {
+        ownerId: product.owner,
+        assetId: product.picture,
+        price: product.price
+      });
+    } catch { }
   });
-  */
+
+  subscriptions['deleted-product'].on('message', async message => {
+    try {
+      await Product.deleteOne({ _id: JSON.parse(message.data)['id'] });
+    } catch { }
+  });
 }
 
 module.exports = { initializePubSub, publishMessage };
