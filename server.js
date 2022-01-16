@@ -1,9 +1,11 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 const Purchase = require('./purchases');
+const Product = require('./product');
+const Wallet = require('./wallet');
 const request = require('request');
 var ObjectId = require('mongoose').Types.ObjectId;
-const { publishMessage } = require("./pubsub");
+const pubsub = require("./pubsub");
 const jwt = require('jsonwebtoken');
 var BASE_API_PATH = "/api/v1";
 
@@ -14,7 +16,7 @@ const {
 
 var app = express();
 app.use(bodyParser.json());
-app.use(function(req, res, next) {
+app.use(function (req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
     next();
@@ -69,22 +71,22 @@ app.get(BASE_API_PATH + "/purchase/", authorizedClient, (req, res) => {
     // TODO: En estos dos, cuando haya autenticación, tal vez habría que devolver error 403
     if ("buyer" in req.query) {
         let buyer = req.query["buyer"];
-        if (ObjectId.isValid(buyer))
-            filters["buyer"] = buyer;
+        if (!(typeof buyer === "string") || ObjectId.isValid(buyer))
+            filters["buyerId"] = buyer;
         else
-            return res.status(400).json("Invalid buyer.");
+            return res.status(400).json("Invalid buyer id.");
     }
 
     if ("seller" in req.query) {
         let seller = req.query["seller"];
-        if (ObjectId.isValid(seller))
-            filters["seller"] = seller;
+        if (!(typeof seller === "string") || ObjectId.isValid(seller))
+            filters["sellerId"] = seller;
         else
-            return res.status(400).json("Invalid seller.");
+            return res.status(400).json("Invalid seller id.");
     }
 
     if ("amountGte" in req.query) {
-        let amountGte = req.query["amountGte"];
+        let amountGte = parseFloat(req.query["amountGte"]);
         if (!isNaN(amountGte))
             filters["amount"] = { "$gte": amountGte };
         else
@@ -92,7 +94,7 @@ app.get(BASE_API_PATH + "/purchase/", authorizedClient, (req, res) => {
     }
 
     if ("amountLte" in req.query) {
-        let amountLte = req.query["amountLte"];
+        let amountLte = parseFloat(req.query["amountLte"]);
         if (!isNaN(amountLte)) {
             let amount;
             if ("amount" in filters)
@@ -122,18 +124,21 @@ app.get(BASE_API_PATH + "/purchase/", authorizedClient, (req, res) => {
 app.get(BASE_API_PATH + "/purchase/:id", authorizedClient, (req, res) => {
     console.log(Date() + " - GET /purchase/" + req.params.id);
 
-    // Check whether the purchase id has a correct format
-    if (ObjectId.isValid(req.params.id))
-        Purchase.findOne({ _id: req.params.id }, (err, purchase) => {
-            if (err)
-                return res.status(500).json("Internal server error");
-            else if (purchase)
+    const id = req.params.id;
+    if (!(typeof id === "string") || !ObjectId.isValid(id))
+        return res.status(400).json("Invalid purchase id");
+
+    Purchase.findOne({ _id: id }, (err, purchase) => {
+        if (err)
+            return res.status(500).json("Internal server error");
+        else if (purchase)
+            if (purchase.buyerId == req.id || purchase.sellerId == req.id)
                 return res.status(200).json(purchase.cleanedPurchase());
             else
-                return res.status(404).json("Purchase not found");
-        });
-    else
-        return res.status(400).json("Invalid purchase id");
+                return res.status(401).json('Unauthorized.');
+        else
+            return res.status(404).json("Purchase not found");
+    });
 });
 
 
@@ -141,65 +146,75 @@ app.get(BASE_API_PATH + "/purchase/:id", authorizedClient, (req, res) => {
 app.post(BASE_API_PATH + "/purchase/", authorizedClient, async (req, res) => {
     console.log(Date() + " - POST /purchase/");
 
-    // Comprobar que no existe compra pendiente
-    Purchase.findOne({ productId: req.params.productId, state: 'Pending' }, async (err, purchase) => {
-        if (err)
-            return res.status(500).json("Internal server error");
-        else if (purchase)
-            return res.status(403).json("There is already a pending purchase for this product");
+    const productId = req.body['productId'];
+    if (!(typeof productId === "string") || !ObjectId.isValid(productId))
+        return res.status(400).json("Invalid product id");
 
-        if (req.body['g-recaptcha-response'] === undefined || req.body['g-recaptcha-response'] === '' || req.body['g-recaptcha-response'] === null)
-            return res.status(400).json({ 'status': 'missing-captcha' });
-        else {
-            let verificationUrl = "https://www.google.com/recaptcha/api/siteverify?secret=" + process.env.RECAPTCHA_SECRET_KEY + "&response=" + req.body['g-recaptcha-response'] + "&remoteip=" + req.socket.remoteAddress;
+    try {
+        const product = await Product.findOne({ _id: productId });
+        if (!product)
+            return res.status(404).json("Product not found");
+        else if (req.id == product.ownerId)
+            return res.status(403).json("You can not buy your own product");
 
-            request(verificationUrl, { json: true }, (error, response, body) => {
-                // Success will be true or false depending upon captcha validation.
-                if (body.success !== undefined && !body.success)
-                    return res.status(400).json({ 'status': 'invalid-captcha' });
-                else {
-                    let buyerId = req.id; // Este es el ID del usuario
-                    let sellerId = "61bf7d53888df2955682a7ea"; // TODO: llamar a la API de product, si existe el product, traerlo y coger el seller. Sino existe, lanzar 404
-                    let amount = 0; // TODO: llamar api de product. el auth token es req.headers.Authorization
-                    let purchase = new Purchase({
-                        buyerId: buyerId,
-                        sellerId: sellerId,
-                        productId: req.body.productId,
-                        amount: amount,
-                        state: 'Pending',
-                    });
+        const wallet = await Wallet.findOne({ userId: req.id });
+        if (!wallet || wallet.funds < product.price)
+            return res.status(403).json("You don't have enough funds in your wallet");
 
-                    let validationErrors = purchase.validateSync();
-                    if (validationErrors)
-                        return res.status(400).json(validationErrors.message);
-                    else
-                        purchase.save(async (err) => {
-                            if (err)
-                                return res.status(500).json("Internal server error inserting purchase in DB");
-                            else {
-                                console.log(Date() + " - Purchase created");
-                                await publishMessage('created-purchase', purchase);
-                                return res.status(201).json(purchase.cleanedPurchase());
-                            }
+        if (!await Purchase.exists({ productId: productId, state: 'Pending' })) {
+            if (req.body['g-recaptcha-response'] === undefined || req.body['g-recaptcha-response'] === '' || req.body['g-recaptcha-response'] === null)
+                return res.status(400).json('Missing reCAPTCHA response.');
+            else {
+                let verificationUrl = "https://www.google.com/recaptcha/api/siteverify?secret=" + process.env.RECAPTCHA_SECRET_KEY + "&response=" + req.body['g-recaptcha-response'] + "&remoteip=" + req.socket.remoteAddress;
+
+                request(verificationUrl, { json: true }, (error, response, body) => {
+                    // Success will be true or false depending upon captcha validation.
+                    if (body.success !== undefined && !body.success)
+                        return res.status(401).json('Invalid reCAPTCHA response.');
+                    else {
+                        let purchase = new Purchase({
+                            buyerId: req.id,
+                            sellerId: product.ownerId,
+                            productId: product._id,
+                            amount: product.price,
+                            state: 'Pending',
                         });
-                }
-            });
-        }
-    });
-});
 
+                        let validationErrors = purchase.validateSync();
+                        if (validationErrors)
+                            return res.status(400).json(validationErrors.message);
+                        else
+                            purchase.save(async (err) => {
+                                if (err)
+                                    return res.status(500).json("Internal server error inserting purchase in DB");
+                                else {
+                                    console.log(Date() + " - Purchase created");
+                                    await pubsub.publishMessage('created-purchase', purchase);
+                                    return res.status(201).json(purchase.cleanedPurchase());
+                                }
+                            });
+                    }
+                });
+            }
+        } else
+            return res.status(403).json("There is already a pending purchase for this product");
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json("Internal server error.");
+    }
+});
 
 // PUT a specific purchase to change its state API method
 app.put(BASE_API_PATH + "/purchase/:id", authorizedClient, async (req, res) => {
     console.log(Date() + " - PUT /purchase/" + req.params.id);
 
     // Check whether the purchase id has a correct format
-    if (!ObjectId.isValid(req.params.id)) {
+    if (!(typeof req.params.id === "string") || !ObjectId.isValid(req.params.id)) {
         console.log(Date() + " - Invalid purchase id");
         return res.status(400).json("Invalid purchase id");
     }
 
-    Purchase.findOne({ _id: req.params.purchaseId }, async (err, purchase) => {
+    Purchase.findOne({ _id: req.params.id }, async (err, purchase) => {
         if (err)
             return res.status(500).json("Internal server error");
         else if (purchase == null)
@@ -209,16 +224,16 @@ app.put(BASE_API_PATH + "/purchase/:id", authorizedClient, async (req, res) => {
         else if (purchase.sellerId != req.id)
             return res.status(403).json("Unauthorized");
 
-		purchase.state = 'Accepted';
-		purchase.save(async (err) => {
-			if (err)
-				return res.status(500).json("Internal server error saving data to DB");
-			else {
-				console.log(Date() + " - Purchase accepted");
-				await publishMessage('updated-purchase', purchase);
-				return res.status(200).json(purchase.cleanedPurchase());
-			}
-		});
+        purchase.state = 'Accepted';
+        purchase.save(async (err) => {
+            if (err)
+                return res.status(500).json("Internal server error saving data to DB");
+            else {
+                console.log(Date() + " - Purchase accepted");
+                await pubsub.publishMessage('updated-purchase', purchase);
+                return res.status(200).json(purchase.cleanedPurchase());
+            }
+        });
     });
 });
 
@@ -228,12 +243,12 @@ app.delete(BASE_API_PATH + "/purchase/:id", authorizedClient, async (req, res) =
     console.log(Date() + " - DELETE /purchase/" + req.params.id);
 
     // Check whether the purchase id has a correct format
-    if (!ObjectId.isValid(req.params.id)) {
+    if (!(typeof req.params.id === "string") || !ObjectId.isValid(req.params.id)) {
         console.log(Date() + " - Invalid purchase id");
         return res.status(400).json("Invalid purchase id");
     }
 
-    Purchase.findOne({ _id: req.params.purchaseId }, async (err, purchase) => {
+    Purchase.findOne({ _id: req.params.id }, async (err, purchase) => {
         if (err)
             return res.status(500).json("Internal server error");
         else if (purchase == null)
@@ -244,15 +259,15 @@ app.delete(BASE_API_PATH + "/purchase/:id", authorizedClient, async (req, res) =
             return res.status(403).json("Unauthorized");
 
 
-		purchase.remove(async (err) => {
-			if (err)
-				return res.status(500).json("Internal server error saving data to DB");
-			else {
-				console.log(Date() + " - Purchase deleted");
-				await publishMessage('deleted-purchase', purchase);
-				return res.status(200).json("Purchase removed");
-			}
-		});
+        purchase.remove(async (err) => {
+            if (err)
+                return res.status(500).json("Internal server error saving data to DB");
+            else {
+                console.log(Date() + " - Purchase deleted");
+                await pubsub.publishMessage('deleted-purchase', purchase);
+                return res.status(200).json("Purchase removed");
+            }
+        });
     });
 });
 
