@@ -42,7 +42,7 @@ const purchaseSchema = new mongoose.Schema({
 purchaseSchema.methods.cleanedPurchase = async function () {
     let assetId = null;
     try {
-        assetId = await Product.findOne({ _id: this.productId }).assetId;
+        assetId = (await Product.findOne({ _id: this.productId })).assetId;
     } catch (error) {
         assetId = null;
     }
