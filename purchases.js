@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const Product = require('./product.js');
 
 // We define the entity "Purchase" schema
 const purchaseSchema = new mongoose.Schema({
@@ -38,12 +39,19 @@ const purchaseSchema = new mongoose.Schema({
 
 // This function gives the information returned in GET methods, deleting atributes as
 // id or updatedAt which are not relevant for the user
-purchaseSchema.methods.cleanedPurchase = function () {
+purchaseSchema.methods.cleanedPurchase = async function () {
+    let assetId = null;
+    try {
+        assetId = await Product.findOne({ _id: this.productId }).assetId;
+    } catch (error) {
+        assetId = null;
+    }
     return {
         id: this._id,
         buyerId: this.buyerId,
         sellerId: this.sellerId,
         productId: this.productId,
+        assetId: assetId,
         amount: this.amount,
         state: this.state,
         createdAt: this.createdAt
