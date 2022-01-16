@@ -86,6 +86,14 @@ app.get(BASE_API_PATH + "/purchase/", authorizedClient, (req, res) => {
             return res.status(400).json("Invalid seller id.");
     }
 
+    if ("product" in req.query) {
+        let product = req.query["product"];
+        if (!(typeof product === "string") || ObjectId.isValid(product))
+            filters["productId"] = product;
+        else
+            return res.status(400).json("Invalid product id.");
+    }
+
     if ("amountGte" in req.query) {
         let amountGte = parseFloat(req.query["amountGte"]);
         if (!isNaN(amountGte))
@@ -110,14 +118,14 @@ app.get(BASE_API_PATH + "/purchase/", authorizedClient, (req, res) => {
     if ("state" in req.query)
         filters["state"] = req.query["state"];
 
-    Purchase.find(filters, null, { sort: { [sortatt]: order }, limit: parseInt(limitatt), skip: parseInt(offset) }, (err, purchases) => {
+    Purchase.find(filters, null, { sort: { [sortatt]: order }, limit: parseInt(limitatt), skip: parseInt(offset) }, async (err, purchases) => {
         if (err) {
             console.log(Date() + "-" + err);
             return res.status(500).json("Internal server error");
         } else
-            return res.status(200).json(purchases.map((purchase) => {
-                return purchase.cleanedPurchase();
-            }));
+            return res.status(200).json(await Promise.all(purchases.map(async (purchase) => {
+                return await purchase.cleanedPurchase();
+            })));
     });
 });
 
@@ -129,12 +137,12 @@ app.get(BASE_API_PATH + "/purchase/:id", authorizedClient, (req, res) => {
     if (!(typeof id === "string") || !ObjectId.isValid(id))
         return res.status(400).json("Invalid purchase id");
 
-    Purchase.findOne({ _id: id }, (err, purchase) => {
+    Purchase.findOne({ _id: id }, async (err, purchase) => {
         if (err)
             return res.status(500).json("Internal server error");
         else if (purchase)
             if (purchase.buyerId == req.id || purchase.sellerId == req.id)
-                return res.status(200).json(purchase.cleanedPurchase());
+                return res.status(200).json(await purchase.cleanedPurchase());
             else
                 return res.status(401).json('Unauthorized.');
         else
@@ -191,7 +199,7 @@ app.post(BASE_API_PATH + "/purchase/", authorizedClient, async (req, res) => {
                                 else {
                                     console.log(Date() + " - Purchase created");
                                     await pubsub.publishMessage('created-purchase', purchase);
-                                    return res.status(201).json(purchase.cleanedPurchase());
+                                    return res.status(201).json(await purchase.cleanedPurchase());
                                 }
                             });
                     }
@@ -232,7 +240,7 @@ app.put(BASE_API_PATH + "/purchase/:id", authorizedClient, async (req, res) => {
             else {
                 console.log(Date() + " - Purchase accepted");
                 await pubsub.publishMessage('updated-purchase', purchase);
-                return res.status(200).json(purchase.cleanedPurchase());
+                return res.status(200).json(await purchase.cleanedPurchase());
             }
         });
     });

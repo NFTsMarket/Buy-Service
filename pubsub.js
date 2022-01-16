@@ -52,7 +52,10 @@ async function initializePubSub(createNewSubscriptions = false) {
   const subscribedTopics = [
     'created-product',
     'updated-product',
-    'deleted-product'
+    'deleted-product',
+    'created-wallet',
+    'updated-wallet',
+    'deleted-wallet'
   ];
   // Se indican los temas que van a ser escuchados y se crea un mapa { topic: subscription }.
   // A cada suscripción se le añaden dos listeners por defecto que únicamente muestran información en la consola
@@ -100,6 +103,35 @@ async function initializePubSub(createNewSubscriptions = false) {
   subscriptions['deleted-product'].on('message', async message => {
     try {
       await Product.deleteOne({ _id: JSON.parse(message.data)['id'] });
+    } catch { }
+  });
+
+  subscriptions['created-wallet'].on('message', async message => {
+    let wallet = JSON.parse(message.data);
+
+    try {
+      await Wallet.create({
+        _id: wallet._id,
+        userId: wallet.user,
+        funds: wallet.fund
+      });
+    } catch { }
+  });
+
+  subscriptions['updated-wallet'].on('message', async message => {
+    let wallet = JSON.parse(message.data);
+
+    try {
+      await Product.updateOne({ _id: wallet._id }, {
+        userId: wallet.user,
+        funds: wallet.fund
+      });
+    } catch { }
+  });
+
+  subscriptions['deleted-wallet'].on('message', async message => {
+    try {
+      await Wallet.deleteOne({ _id: JSON.parse(message.data)['_id'] });
     } catch { }
   });
 }
