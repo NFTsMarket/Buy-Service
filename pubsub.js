@@ -1,5 +1,6 @@
 const { PubSub } = require("@google-cloud/pubsub");
 const Product = require('./product');
+const Wallet = require('./wallet');
 
 require("dotenv").config();
 
