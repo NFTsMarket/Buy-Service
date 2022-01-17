@@ -86,7 +86,7 @@ async function initializePubSub(createNewSubscriptions = false) {
         assetId: product.picture,
         price: product.price
       });
-    } catch { }
+    } catch(e) { console.error(e); }
   });
 
   subscriptions['updated-product'].on('message', async message => {
@@ -98,13 +98,13 @@ async function initializePubSub(createNewSubscriptions = false) {
         assetId: product.picture,
         price: product.price
       });
-    } catch { }
+    } catch(e) { console.error(e); }
   });
 
   subscriptions['deleted-product'].on('message', async message => {
     try {
       await Product.deleteOne({ _id: JSON.parse(message.data)['id'] });
-    } catch { }
+    } catch(e) { console.error(e); }
   });
 
   subscriptions['created-wallet'].on('message', async message => {
@@ -116,7 +116,7 @@ async function initializePubSub(createNewSubscriptions = false) {
         userId: wallet.user,
         funds: wallet.fund
       });
-    } catch { }
+    } catch(e) { console.error(e); }
   });
 
   subscriptions['updated-wallet'].on('message', async message => {
@@ -127,13 +127,13 @@ async function initializePubSub(createNewSubscriptions = false) {
         userId: wallet.user,
         funds: wallet.fund
       });
-    } catch { }
+    } catch(e) { console.error(e); }
   });
 
   subscriptions['deleted-wallet'].on('message', async message => {
     try {
       await Wallet.deleteOne({ _id: JSON.parse(message.data)['_id'] });
-    } catch { }
+    } catch(e) { console.error(e); }
   });
 }
 
