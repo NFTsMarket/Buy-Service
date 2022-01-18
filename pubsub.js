@@ -123,7 +123,7 @@ async function initializePubSub(createNewSubscriptions = false) {
     let wallet = JSON.parse(message.data);
 
     try {
-      await Product.updateOne({ _id: wallet._id }, {
+      await Wallet.updateOne({ _id: wallet._id }, {
         userId: wallet.user,
         funds: wallet.fund
       });
